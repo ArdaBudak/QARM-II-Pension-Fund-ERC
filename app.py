@@ -616,7 +616,7 @@ with tab2:
 st.markdown("<br>", unsafe_allow_html=True)
 
     team = [
- {
+        {
             "name": "Lucas Jaccard",
             "role": "Frontend Developer",
             "desc": "Lucas designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
