@@ -632,59 +632,49 @@ with tab3:
     Thank you for using our tool! 🎉
     """)
 
-    st.markdown("<h2 style='text-align: center;'>Meet the Team</h2>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    st.markdown(
-        """
-        <style>
-        .team-container {
-            display: flex;
-            justify-content: center;
-            flex-wrap: nowrap;
-            gap: 40px;
-            margin-top: 30px;
+    team = [
+ {
+            "name": "Lucas Jaccard",
+            "role": "Frontend Developer",
+            "desc": "Lucas designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas-JACCARD.jpg"
+        },
+ {
+            "name": "Edward Arion",
+            "role": "Backend Developer",
+            "desc": "Edward ensures computational stability and performance, integrating optimization algorithms efficiently within the Streamlit app.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward-ARION.jpg"
+        },
+ {
+            "name": "Arda Budak",
+            "role": "Quantitative Analyst",
+            "desc": "Arda applies quantitative methods and stochastic simulations to enhance risk control and portfolio diversification within the project.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda-BUDAK.jpg"
+        },
+        {
+            "name": "Rihem Rhaiem",
+            "role": "Data Scientist",
+            "desc": "Rihem specializes in financial data analytics and portfolio optimization models, contributing quantitative insight to the ERC framework.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem-RHAIEM.jpg"
+        },
+        {
+            "name": "Audrey Champion",
+            "role": "Financial Engineer",
+            "desc": "Audrey focuses on translating theory into practice, helping design the pension fund strategy and ensuring academic rigor in implementation.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey-CHAMPION.jpg"
         }
-        .team-member {
-            text-align: center;
-            font-family: 'Source Sans Pro', sans-serif;
-        }
-        .team-member img {
-            width: 150px;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 50%;
-            border: 3px solid #ccc;
-            background-color: #eaeaea; /* fond uniforme demandé par Lucas */
-            padding: 5px;
-        }
-        .team-member h4 {
-            margin-top: 10px;
-            margin-bottom: 0;
-        }
-        </style>
+    ]
 
-        <div class="team-container">
-            <div class="team-member">
-                <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda-BUDAK.JPG" alt="Arda Budak">
-                <h4>Arda Budak</h4>
-            </div>
-            <div class="team-member">
-                <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey-CHAMPION.jpg" alt="Audrey Champion">
-                <h4>Audrey Champion</h4>
-            </div>
-            <div class="team-member">
-                <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward-ARION.jpg" alt="Edward Arion">
-                <h4>Edward Arion</h4>
-            </div>
-            <div class="team-member">
-                <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas-JACCARD.jpg" alt="Lucas Jaccard">
-                <h4>Lucas Jaccard</h4>
-            </div>
-            <div class="team-member">
-                <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem-RHAIEM.jpg" alt="Rihem Rhaiem">
-                <h4>Rihem Rhaiem</h4>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    
+# Display team members horizontally
+    cols = st.columns(len(team))
+
+    for i, member in enumerate(team):
+        with cols[i]:
+            st.image(member["photo"], width=150)
+            st.markdown(f"### {member['name']}")
+            st.markdown(f"**{member['role']}**")
+            st.write(member["desc"])
+
