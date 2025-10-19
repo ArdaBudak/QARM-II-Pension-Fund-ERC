@@ -631,7 +631,8 @@ with tab3:
 
     st.markdown("---")
     st.markdown("## 👥 Meet the Team")
-      st.markdown("""
+     st.markdown(
+        """
         <style>
         .team-container {
             display: flex;
@@ -677,7 +678,9 @@ with tab3:
             font-size: 14px;
         }
         </style>
-    """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True
+    )
 
     team = [
         {
@@ -723,10 +726,13 @@ with tab3:
         </div>
         """
     html_code += "</div>"
+
     st.markdown(html_code, unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown(
         "<p style='text-align:center; font-style:italic; color:#bbb'>Together, we aim to bridge finance and technology — one optimized portfolio at a time. 💡</p>",
+        unsafe_allow_html=True
+    )
         unsafe_allow_html=True
     )
