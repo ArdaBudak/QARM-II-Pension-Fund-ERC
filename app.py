@@ -639,10 +639,10 @@ Thank you for using our tool! 🎉
 
     team = [
         {
-            "name": "Rihem Rhaiem",
-            "role": "Data Scientist",
-            "desc": "Rihem specializes in financial data analytics and portfolio optimization models, contributing quantitative insight to the ERC framework.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem-RHAIEM.jpg"
+            "name": "Lucas Jaccard",
+            "role": "Frontend Developer",
+            "desc": "Lucas designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas-JACCARD.jpg"
         },
         {
             "name": "Audrey Champion",
@@ -657,16 +657,16 @@ Thank you for using our tool! 🎉
             "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda-BUDAK.JPG"
         },
         {
+            "name": "Rihem Rhaiem",
+            "role": "Data Scientist",
+            "desc": "Rihem specializes in financial data analytics and portfolio optimization models, contributing quantitative insight to the ERC framework.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem-RHAIEM.jpg"
+        },
+        {
             "name": "Edward Arion",
             "role": "Backend Developer",
             "desc": "Edward ensures computational stability and performance, integrating optimization algorithms efficiently within the Streamlit app.",
             "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward-ARION.jpg"
-        },
-        {
-            "name": "Lucas Jaccard",
-            "role": "Frontend Developer",
-            "desc": "Lucas designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas-JACCARD.jpg"
         },
     ]
 
