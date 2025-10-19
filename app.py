@@ -648,7 +648,7 @@ Thank you for using our tool! 🎉
             "name": "Audrey Champion",
             "role": "Financial Engineer",
             "desc": "Audrey focuses on translating theory into practice, helping design the pension fund strategy and ensuring academic rigor in implementation.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey-CHAMPION.jpg"
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey_CHAMPION.JPG"
         },
         {
             "name": "Arda Budak",
