@@ -631,49 +631,102 @@ with tab3:
 
     st.markdown("---")
     st.markdown("## 👥 Meet the Team")
-    st.markdown("<br>", unsafe_allow_html=True)
+     st.markdown("""
+        <style>
+        .team-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 40px;
+            margin-top: 30px;
+        }
+        .team-card {
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            width: 220px;
+            box-shadow: 0px 0px 10px rgba(255,255,255,0.1);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s;
+        }
+        .team-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0px 0px 20px rgba(255,255,255,0.2);
+        }
+        .team-card img {
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border: 3px solid #ddd;
+        }
+        .team-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 10px;
+            color: white;
+        }
+        .team-role {
+            color: #aaa;
+            font-style: italic;
+            font-size: 15px;
+            margin-bottom: 10px;
+        }
+        .team-desc {
+            color: #ccc;
+            font-size: 14px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
     team = [
- {
-            "name": "Lucas Jaccard",
-            "role": "Frontend Developer",
-            "desc": "Lucas designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas-JACCARD.jpg"
-        },
- {
-            "name": "Edward Arion",
-            "role": "Backend Developer",
-            "desc": "Edward ensures computational stability and performance, integrating optimization algorithms efficiently within the Streamlit app.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward-ARION.jpg"
-        },
- {
-            "name": "Arda Budak",
-            "role": "Quantitative Analyst",
-            "desc": "Arda applies quantitative methods and stochastic simulations to enhance risk control and portfolio diversification within the project.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda-BUDAK.JPG"
-        },
         {
             "name": "Rihem Rhaiem",
-            "role": "Data Scientist",
-            "desc": "Rihem specializes in financial data analytics and portfolio optimization models, contributing quantitative insight to the ERC framework.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem-RHAIEM.jpg"
+            "role": "Project Lead",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem-RHAIEM.jpg",
+            "desc": "Focused on portfolio theory and optimization modelling. Ensured methodological coherence and project coordination."
         },
         {
             "name": "Audrey Champion",
+            "role": "Quantitative Analyst",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey-CHAMPION.jpg",
+            "desc": "Responsible for statistical analysis and return modelling, ensuring robust data interpretation and accuracy."
+        },
+        {
+            "name": "Arda Budak",
+            "role": "Data Scientist",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda-BUDAK.JPG",
+            "desc": "Developed data pipelines and implemented key optimization algorithms for ERC portfolio rebalancing."
+        },
+        {
+            "name": "Edward Arion",
             "role": "Financial Engineer",
-            "desc": "Audrey focuses on translating theory into practice, helping design the pension fund strategy and ensuring academic rigor in implementation.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey-CHAMPION.jpg"
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward-ARION.jpg",
+            "desc": "Worked on the mathematical modelling and integration of financial risk measures into the optimization framework."
+        },
+        {
+            "name": "Lucas Jaccard",
+            "role": "Portfolio Strategist",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas-JACCARD.jpg",
+            "desc": "Handled performance visualization, reporting and portfolio interpretation for real-world applications."
         }
     ]
 
-    
-# Display team members horizontally
-    cols = st.columns(len(team))
+    html_code = "<div class='team-container'>"
+    for member in team:
+        html_code += f"""
+        <div class='team-card'>
+            <img src='{member["photo"]}' alt='{member["name"]}'>
+            <div class='team-name'>{member["name"]}</div>
+            <div class='team-role'>{member["role"]}</div>
+            <div class='team-desc'>{member["desc"]}</div>
+        </div>
+        """
+    html_code += "</div>"
+    st.markdown(html_code, unsafe_allow_html=True)
 
-    for i, member in enumerate(team):
-        with cols[i]:
-            st.image(member["photo"], width=150)
-            st.markdown(f"### {member['name']}")
-            st.markdown(f"**{member['role']}**")
-            st.write(member["desc"])
-
+    st.markdown("---")
+    st.markdown(
+        "<p style='text-align:center; font-style:italic; color:#bbb'>Together, we aim to bridge finance and technology — one optimized portfolio at a time. 💡</p>",
+        unsafe_allow_html=True
+    )
