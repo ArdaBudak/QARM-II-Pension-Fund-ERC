@@ -632,28 +632,11 @@ with tab3:
     Thank you for using our tool! 🎉
     """)
 
-st.markdown("### 👥 Meet the Team", unsafe_allow_html=True)
-   st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("---")
+    st.markdown("## 👥 Meet the Team")
+    st.markdown("<br>", unsafe_allow_html=True)
 
     team = [
- {
-            "name": "Lucas Jaccard",
-            "role": "Frontend Developer",
-            "desc": "Lucas designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas-JACCARD.jpg"
-        },
- {
-            "name": "Edward Arion",
-            "role": "Backend Developer",
-            "desc": "Edward ensures computational stability and performance, integrating optimization algorithms efficiently within the Streamlit app.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward-ARION.jpg"
-        },
- {
-            "name": "Arda Budak",
-            "role": "Quantitative Analyst",
-            "desc": "Arda applies quantitative methods and stochastic simulations to enhance risk control and portfolio diversification within the project.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda-BUDAK.JPG"
-        },
         {
             "name": "Rihem Rhaiem",
             "role": "Data Scientist",
@@ -665,11 +648,27 @@ st.markdown("### 👥 Meet the Team", unsafe_allow_html=True)
             "role": "Financial Engineer",
             "desc": "Audrey focuses on translating theory into practice, helping design the pension fund strategy and ensuring academic rigor in implementation.",
             "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey-CHAMPION.jpg"
-        }
+        },
+        {
+            "name": "Arda Budak",
+            "role": "Quantitative Analyst",
+            "desc": "Arda applies quantitative methods and stochastic simulations to enhance risk control and portfolio diversification within the project.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda-BUDAK.jpg"
+        },
+        {
+            "name": "Edward Arion",
+            "role": "Backend Developer",
+            "desc": "Edward ensures computational stability and performance, integrating optimization algorithms efficiently within the Streamlit app.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward-ARION.jpg"
+        },
+        {
+            "name": "Lucas Jaccard",
+            "role": "Frontend Developer",
+            "desc": "Lucas designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas-JACCARD.jpg"
+        },
     ]
 
-    
-# Display team members horizontally
     cols = st.columns(len(team))
 
     for i, member in enumerate(team):
@@ -678,7 +677,3 @@ st.markdown("### 👥 Meet the Team", unsafe_allow_html=True)
             st.markdown(f"### {member['name']}")
             st.markdown(f"**{member['role']}**")
             st.write(member["desc"])
-
-
-
-    
