@@ -614,24 +614,20 @@ with tab2:
         st.info("Please select assets and optimize in the Asset Selection tab.")
 
 with tab3:
-    st.title("About Us") 
-    st.write(""" 
-    Welcome to the Pension Fund Optimizer! 
+    st.title("About Us")
+
+    st.write("""
+    Welcome to the Pension Fund Optimizer!
     
-    We are a dedicated team of financial experts and developers passionate about helping individuals and institutions optimize their pension funds for maximum efficiency and risk management. 
-    
-    Our tool uses advanced optimization techniques, specifically Dynamic Equal Risk Contribution (ERC) with annual rebalancing, to create balanced portfolios that aim to equalize the risk contributions from each asset over time. 
-    
-    Built with Streamlit and powered by open-source libraries, this app provides an intuitive interface for selecting assets, analyzing historical data, and visualizing results. 
-    
-    If you have any questions or feedback, feel free to reach out at support@pensionoptimizer.com.
-    
-    Thank you for using our tool! 🎉 
+    We are a dedicated team of finance students and data enthusiasts passionate about designing intelligent, data-driven portfolio strategies.
+    This project was built as part of the **Quantitative Asset and Risk Management II** course at **HEC Lausanne**, using advanced optimization techniques such as **Dynamic Equal Risk Contribution (ERC)** to create balanced and resilient pension fund portfolios.
+
+    Our mission is to make portfolio diversification and risk parity more intuitive, accessible, and transparent for institutional investors.
     """)
 
-    st.markdown("---")
-    st.markdown("## 👥 Meet the Team")
-     st.markdown(
+    st.markdown("## Meet the Team")
+
+    st.markdown(
         """
         <style>
         .team-container {
@@ -732,7 +728,5 @@ with tab3:
     st.markdown("---")
     st.markdown(
         "<p style='text-align:center; font-style:italic; color:#bbb'>Together, we aim to bridge finance and technology — one optimized portfolio at a time. 💡</p>",
-        unsafe_allow_html=True
-    )
         unsafe_allow_html=True
     )
