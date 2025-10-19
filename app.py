@@ -631,7 +631,7 @@ with tab3:
 
     st.markdown("---")
     st.markdown("## 👥 Meet the Team")
-     st.markdown("""
+      st.markdown("""
         <style>
         .team-container {
             display: flex;
