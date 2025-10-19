@@ -643,7 +643,7 @@ with tab3:
     }
 
     .team-card {
-        background-color: #2e2e2e; /* Fond général de la carte */
+        background-color: #2e2e2e;
         border-radius: 15px;
         padding: 20px;
         text-align: center;
@@ -652,7 +652,7 @@ with tab3:
     }
 
     .photo-background {
-        background-color: #bdbdbd; /* 🔹 Fond gris clair autour des photos */
+        background-color: #bdbdbd; /* fond gris */
         border-radius: 50%;
         display: inline-block;
         padding: 5px;
@@ -678,7 +678,7 @@ with tab3:
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 👥 Meet the Team")
+    st.markdown("### 👥 Meet the Team", unsafe_allow_html=True)
 
     st.markdown("""
     <div class="team-container">
