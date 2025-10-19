@@ -651,14 +651,18 @@ with tab3:
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
 
-    .team-card img {
+    .photo-background {
+        background-color: #bdbdbd; /* 🔹 Fond gris clair autour des photos */
+        border-radius: 50%;
+        display: inline-block;
+        padding: 5px;
+    }
+
+    .photo-background img {
         width: 150px;
         height: 150px;
         object-fit: cover;
         border-radius: 50%;
-        border: 3px solid #ddd;
-        background-color: #bdbdbd; /* 🔹 Fond gris clair uniforme */
-        padding: 5px;
     }
 
     .team-card h3 {
@@ -679,31 +683,41 @@ with tab3:
     st.markdown("""
     <div class="team-container">
         <div class="team-card">
-            <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas-JACCARD.jpg">
+            <div class="photo-background">
+                <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas-JACCARD.jpg">
+            </div>
             <h3>Lucas Jaccard</h3>
             <p>Frontend Developer</p>
         </div>
 
         <div class="team-card">
-            <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward-ARION.jpg">
+            <div class="photo-background">
+                <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward-ARION.jpg">
+            </div>
             <h3>Edward Arion</h3>
             <p>Backend Developer</p>
         </div>
 
         <div class="team-card">
-            <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda-BUDAK.JPG">
+            <div class="photo-background">
+                <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda-BUDAK.JPG">
+            </div>
             <h3>Arda Budak</h3>
             <p>Quantitative Analyst</p>
         </div>
 
         <div class="team-card">
-            <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem-RHAIEM.jpg">
+            <div class="photo-background">
+                <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem-RHAIEM.jpg">
+            </div>
             <h3>Rihem Rhaiem</h3>
             <p>Data Scientist</p>
         </div>
 
         <div class="team-card">
-            <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey-CHAMPION.jpg">
+            <div class="photo-background">
+                <img src="https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey-CHAMPION.jpg">
+            </div>
             <h3>Audrey Champion</h3>
             <p>Financial Engineer</p>
         </div>
