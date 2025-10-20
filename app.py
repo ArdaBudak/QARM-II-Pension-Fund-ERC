@@ -669,40 +669,25 @@ Thank you for using our tool! 🎉
         },
     ]
 
-    cols = st.columns(len(team))
-
-    for i, member in enumerate(team):
-        with cols[i]:
-            st.image(member["photo"], width=150)
-            st.markdown(f"### {member['name']}")
-            st.markdown(f"**{member['role']}**")
-            st.write(member["desc"])
-
-# Custom CSS for layout and style
+    # Create centered layout for the team
     st.markdown(
         """
-        <style>
-        /* Center the team section */
-        .stHorizontalBlock {
-            justify-content: center !important;
-            align-items: flex-start !important;
-            text-align: center !important;
-        }
-
-        /* Style each photo */
-        .stImage img {
-            border-radius: 50%;
-            background-color: #e0e0e0; /* Light grey background */
-            padding: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-            margin-bottom: 10px;
-        }
-
-        /* Center and clean text */
-        .stMarkdown h3, .stMarkdown p {
-            text-align: center !important;
-        }
-        </style>
+        <div style='display: flex; justify-content: center; flex-wrap: wrap; text-align: center; gap: 40px;'>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
+
+    for member in team:
+        st.markdown(
+            f"""
+            <div style='width: 200px;'>
+                <img src='{member["photo"]}' width='180' style='background-color: #e0e0e0; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);'>
+                <h3 style='margin-top: 10px;'>{member["name"]}</h3>
+                <p><b>{member["role"]}</b></p>
+                <p style='font-size: 14px; color: #555;'>{member["desc"]}</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("</div>", unsafe_allow_html=True)
