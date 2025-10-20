@@ -669,23 +669,44 @@ Thank you for using our tool! 🎉
         },
     ]
 
-     # --- Display Team Section Centered Horizontally ---
-    team_html = """
-    <div style='display: flex; justify-content: center; flex-wrap: wrap; gap: 40px; text-align: center; margin-top: 20px;'>
+     # Affichage des photos au centre, en ligne horizontale
+st.markdown(
     """
+    <style>
+    .team-container {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 40px;
+        text-align: center;
+        margin-top: 20px;
+    }
+    .team-member {
+        width: 200px;
+    }
+    .team-member img {
+        border-radius: 10px;
+        width: 150px;
+        height: auto;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-    for member in team:
-        team_html += f"""
-        <div style='width: 220px; background-color: #f5f5f5; padding: 15px; border-radius: 10px; 
-                     box-shadow: 0 2px 6px rgba(0,0,0,0.1);'>
-            <img src='{member["photo"]}' width='180' 
-                 style='border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.15);'>
-            <h3 style='margin-top: 10px; margin-bottom: 5px;'>{member["name"]}</h3>
-            <p style='font-weight: bold; margin: 0;'>{member["role"]}</p>
-            <p style='font-size: 14px; color: #555; margin-top: 5px;'>{member["desc"]}</p>
+st.markdown("<div class='team-container'>", unsafe_allow_html=True)
+
+for member in team:
+    st.markdown(
+        f"""
+        <div class='team-member'>
+            <img src='{member["photo"]}' alt='{member["name"]}'>
+            <h3>{member["name"]}</h3>
+            <p><b>{member["role"]}</b></p>
+            <p>{member["desc"]}</p>
         </div>
-        """
+        """,
+        unsafe_allow_html=True
+    )
 
-    team_html += "</div>"
-
-    st.markdown(team_html, unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
