@@ -631,8 +631,7 @@ If you have any questions or feedback, feel free to reach out at support@pension
 
 Thank you for using our tool! 🎉
     """)
-
-
+    
     st.markdown("---")
     st.markdown("## 👥 Meet the Team")
     st.markdown("<br>", unsafe_allow_html=True)
