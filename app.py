@@ -669,25 +669,23 @@ Thank you for using our tool! 🎉
         },
     ]
 
-    # Create centered layout for the team
-    st.markdown(
-        """
-        <div style='display: flex; justify-content: center; flex-wrap: wrap; text-align: center; gap: 40px;'>
-        """,
-        unsafe_allow_html=True,
-    )
+     # --- Display Team Section Centered Horizontally ---
+    team_html = """
+    <div style='display: flex; justify-content: center; flex-wrap: wrap; gap: 40px; text-align: center; margin-top: 20px;'>
+    """
 
     for member in team:
-        st.markdown(
-            f"""
-            <div style='width: 200px;'>
-                <img src='{member["photo"]}' width='180' style='background-color: #e0e0e0; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);'>
-                <h3 style='margin-top: 10px;'>{member["name"]}</h3>
-                <p><b>{member["role"]}</b></p>
-                <p style='font-size: 14px; color: #555;'>{member["desc"]}</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        team_html += f"""
+        <div style='width: 220px; background-color: #f5f5f5; padding: 15px; border-radius: 10px; 
+                     box-shadow: 0 2px 6px rgba(0,0,0,0.1);'>
+            <img src='{member["photo"]}' width='180' 
+                 style='border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.15);'>
+            <h3 style='margin-top: 10px; margin-bottom: 5px;'>{member["name"]}</h3>
+            <p style='font-weight: bold; margin: 0;'>{member["role"]}</p>
+            <p style='font-size: 14px; color: #555; margin-top: 5px;'>{member["desc"]}</p>
+        </div>
+        """
 
-    st.markdown("</div>", unsafe_allow_html=True)
+    team_html += "</div>"
+
+    st.markdown(team_html, unsafe_allow_html=True)
