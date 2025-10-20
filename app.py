@@ -669,25 +669,33 @@ team = [
         },
     ]
 
-     # Create centered layout for the team
-    st.markdown(
-        """
-        <div style='display: flex; justify-content: center; flex-wrap: wrap; text-align: center; gap: 40px;'>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Add custom CSS for center alignment and styling
+st.markdown(
+    """
+    <style>
+    /* Center everything in the team section */
+    .stHorizontalBlock {
+        justify-content: center !important;
+        align-items: flex-start !important;
+        text-align: center !important;
+    }
 
-    for member in team:
-        st.markdown(
-            f"""
-            <div style='width: 200px;'>
-                <img src='{member["photo"]}' width='180' style='background-color: #e0e0e0; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);'>
-                <h3 style='margin-top: 10px;'>{member["name"]}</h3>
-                <p><b>{member["role"]}</b></p>
-                <p style='font-size: 14px; color: #555;'>{member["desc"]}</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    /* Style for each team member */
+    .stImage {
+        display: flex;
+        justify-content: center !important;
+        margin: 0 auto !important;
+        border-radius: 50%;
+        box-shadow: 0px 4px 12px rgba(0,0,0,0.2);
+        background-color: #f0f0f0; /* Light gray background for consistency */
+        padding: 8px;
+    }
 
-    st.markdown("</div>", unsafe_allow_html=True)
+    /* Make the text consistent and centered */
+    .stMarkdown h3, .stMarkdown p {
+        text-align: center !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
