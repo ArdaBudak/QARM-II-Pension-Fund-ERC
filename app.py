@@ -677,3 +677,32 @@ Thank you for using our tool! 🎉
             st.markdown(f"### {member['name']}")
             st.markdown(f"**{member['role']}**")
             st.write(member["desc"])
+
+# Custom CSS for layout and style
+    st.markdown(
+        """
+        <style>
+        /* Center the team section */
+        .stHorizontalBlock {
+            justify-content: center !important;
+            align-items: flex-start !important;
+            text-align: center !important;
+        }
+
+        /* Style each photo */
+        .stImage img {
+            border-radius: 50%;
+            background-color: #e0e0e0; /* Light grey background */
+            padding: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            margin-bottom: 10px;
+        }
+
+        /* Center and clean text */
+        .stMarkdown h3, .stMarkdown p {
+            text-align: center !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
