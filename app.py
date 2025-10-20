@@ -636,8 +636,8 @@ Thank you for using our tool! 🎉
     st.markdown("## 👥 Meet the Team")
     st.markdown("<br>", unsafe_allow_html=True)
 
-    team = [
-        {
+team = [
+         {
             "name": "Lucas Jaccard",
             "role": "Frontend Developer",
             "desc": "Lucas designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
@@ -669,11 +669,25 @@ Thank you for using our tool! 🎉
         },
     ]
 
-     # Display team members
-    cols = st.columns(len(team))
-    for i, member in enumerate(team):
-        with cols[i]:
-            st.image(member["photo"], width=150)
-            st.markdown(f"### {member['name']}")
-            st.markdown(f"**{member['role']}**")
-            st.write(member["desc"])
+     # Create centered layout for the team
+    st.markdown(
+        """
+        <div style='display: flex; justify-content: center; flex-wrap: wrap; text-align: center; gap: 40px;'>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    for member in team:
+        st.markdown(
+            f"""
+            <div style='width: 200px;'>
+                <img src='{member["photo"]}' width='180' style='background-color: #e0e0e0; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);'>
+                <h3 style='margin-top: 10px;'>{member["name"]}</h3>
+                <p><b>{member["role"]}</b></p>
+                <p style='font-size: 14px; color: #555;'>{member["desc"]}</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("</div>", unsafe_allow_html=True)
