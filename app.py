@@ -631,13 +631,13 @@ If you have any questions or feedback, feel free to reach out at support@pension
 
 Thank you for using our tool! 🎉
     """)
-    
+
     st.markdown("---")
     st.markdown("## 👥 Meet the Team")
     st.markdown("<br>", unsafe_allow_html=True)
 
-team = [
-         {
+    team = [
+        {
             "name": "Lucas Jaccard",
             "role": "Frontend Developer",
             "desc": "Lucas designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
@@ -669,33 +669,40 @@ team = [
         },
     ]
 
-    # Add custom CSS for center alignment and styling
-st.markdown(
-    """
-    <style>
-    /* Center everything in the team section */
-    .stHorizontalBlock {
-        justify-content: center !important;
-        align-items: flex-start !important;
-        text-align: center !important;
-    }
+    # Display team members
+    cols = st.columns(len(team))
+    for i, member in enumerate(team):
+        with cols[i]:
+            st.image(member["photo"], width=150)
+            st.markdown(f"### {member['name']}")
+            st.markdown(f"**{member['role']}**")
+            st.write(member["desc"])
 
-    /* Style for each team member */
-    .stImage {
-        display: flex;
-        justify-content: center !important;
-        margin: 0 auto !important;
-        border-radius: 50%;
-        box-shadow: 0px 4px 12px rgba(0,0,0,0.2);
-        background-color: #f0f0f0; /* Light gray background for consistency */
-        padding: 8px;
-    }
+    # Custom CSS for layout and style
+    st.markdown(
+        """
+        <style>
+        /* Center the team section */
+        .stHorizontalBlock {
+            justify-content: center !important;
+            align-items: flex-start !important;
+            text-align: center !important;
+        }
 
-    /* Make the text consistent and centered */
-    .stMarkdown h3, .stMarkdown p {
-        text-align: center !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+        /* Style each photo */
+        .stImage img {
+            border-radius: 50%;
+            background-color: #e0e0e0; /* Light grey background */
+            padding: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            margin-bottom: 10px;
+        }
+
+        /* Center and clean text */
+        .stMarkdown h3, .stMarkdown p {
+            text-align: center !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
