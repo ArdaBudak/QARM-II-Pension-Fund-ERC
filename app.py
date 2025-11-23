@@ -492,7 +492,7 @@ with tab1:
         if 'valid_stocks' not in st.session_state:
             st.session_state.valid_stocks = []
 
-        st.markdown("### Select Date Range (Calendar Mode)")
+        st.markdown("### Select Date Range")
 
         col1, col2 = st.columns(2)
 
