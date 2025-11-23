@@ -479,22 +479,9 @@ with tab1:
     if custom_data.empty:
         st.error("Failed to load the custom dataset: Ensure 'Stock_Returns_With_Names_post2000_cleaned.csv' is in the root directory.")
     else:
-        min_date = datetime(2000, 2, 1).date()  # Dataset starts at 2000-01-31, so first full month is February 2000
-        max_date = datetime(2024, 12, 31).date()  # Dataset ends at 2024-12-31
-        
-        # Generate month/year options
-        month_names = ['January', 'February', 'March', 'April', 'May', 'June', 
-                       'July', 'August', 'September', 'October', 'November', 'December']
-        date_options = []
-        date_to_str = {}
-        for year in range(2000, 2025):
-            start_month = 2 if year == 2000 else 1  # Start at February 2000
-            end_month = 12 if year < 2024 else 12  # End at December 2024
-            for month in range(start_month, end_month + 1):
-                date_str = f"{month_names[month-1]} {year}"
-                date_options.append(date_str)
-                date_to_str[date_str] = (year, month)
-        
+        min_date = datetime(2000, 2, 1).date()
+        max_date = datetime(2024, 12, 31).date()
+
         # Initialize session state
         if 'dates_confirmed' not in st.session_state:
             st.session_state.dates_confirmed = False
@@ -504,45 +491,43 @@ with tab1:
             st.session_state.end_date = None
         if 'valid_stocks' not in st.session_state:
             st.session_state.valid_stocks = []
-        
-        # Date inputs
-        st.markdown("### Select Date Range")
+
+        st.markdown("### Select Date Range (Calendar Mode)")
+
         col1, col2 = st.columns(2)
+
         with col1:
-            start_date_str = st.selectbox(
-                "Start Month/Year",
-                options=date_options,
-                index=date_options.index("January 2018") if "January 2018" in date_options else 0,  # Default to January 2018
-                key="start_date_str"
+            start_date = st.date_input(
+                "📅 Start Date",
+                value=datetime(2018, 1, 1),
+                min_value=min_date,
+                max_value=max_date
             )
+
         with col2:
-            end_date_str = st.selectbox(
-                "End Month/Year",
-                options=date_options,
-                index=date_options.index("December 2021") if "December 2021" in date_options else len(date_options)-1,  # Default to December 2021
-                key="end_date_str"
+            end_date = st.date_input(
+                "📅 End Date",
+                value=datetime(2021, 12, 31),
+                min_value=min_date,
+                max_value=max_date
             )
-        
-        # Convert selected strings to dates
-        try:
-            start_year, start_month = date_to_str[start_date_str]
-            end_year, end_month = date_to_str[end_date_str]
-            start_date = datetime(start_year, start_month, 1).date()
-            end_date = (datetime(end_year, end_month, 1) + pd.offsets.MonthEnd(0)).date()
-            
-            if start_date > end_date:
-                st.error("Start date must be before end date.")
-            elif end_date > max_date or start_date < min_date:
-                st.error(f"Dates must be within data range: 2000-02-01 to 2024-12-31.")
-            else:
-                if st.button("Confirm Dates"):
-                    st.session_state.start_date = start_date
-                    st.session_state.end_date = end_date
-                    st.session_state.valid_stocks = get_valid_stocks(custom_data, start_date, end_date)
-                    st.session_state.dates_confirmed = True
-                    st.success(f"Dates confirmed! Found {len(st.session_state.valid_stocks)} valid stocks. Please select assets and rebalance frequency below.")
-        except Exception:
-            st.error("Invalid date selection. Please choose valid month and year.")
+
+        # Validation
+        if start_date > end_date:
+            st.error("Start date must be before end date.")
+        elif end_date > max_date or start_date < min_date:
+            st.error("Dates must be within data range: 2000-02-01 to 2024-12-31.")
+        else:
+            if st.button("Confirm Dates"):
+                st.session_state.start_date = start_date
+                st.session_state.end_date = end_date
+                st.session_state.valid_stocks = get_valid_stocks(custom_data, start_date, end_date)
+                st.session_state.dates_confirmed = True
+                st.success(
+                    f"Dates confirmed! Found {len(st.session_state.valid_stocks)} valid stocks. "
+                    "Please select assets and rebalance frequency below."
+                )
+
         
         # Show stock selection and rebalance frequency only after dates are confirmed
         if st.session_state.dates_confirmed:
