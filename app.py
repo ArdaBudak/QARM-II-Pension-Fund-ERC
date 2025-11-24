@@ -812,7 +812,7 @@ with tab1:
         st.stop()
 
     min_date = custom_data.index.min().date()
-    max_date = custom_data.index.max().date()
+    max_date = datetime(2024, 12, 31).date()
 
 
     st.markdown("### Select Date Range")
