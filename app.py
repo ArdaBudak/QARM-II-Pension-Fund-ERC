@@ -754,7 +754,6 @@ def plot_country_exposure_over_time(results):
         ))
 
     fig.update_layout(
-        title="Country Exposure Over Time",
         xaxis_title="Date",
         yaxis_title="Exposure (%)",
         paper_bgcolor="#000",
@@ -919,10 +918,10 @@ with tab2:
     st.subheader("Correlation Matrix")
     st.plotly_chart(plot_correlation_matrix(results), use_container_width=True)
 
-    st.subheader("Latest Country Allocation (Stocks ONLY)")
+    st.subheader("Latest Country Exposure (Stocks ONLY)")
     st.plotly_chart(plot_country_exposure_pie(results), use_container_width=True)
 
-    st.subheader("Country Allocation Over Time (Stocks ONLY)")
+    st.subheader("Country Exposure Over Time (Stocks ONLY)")
     st.plotly_chart(plot_country_exposure_over_time(results), use_container_width=True)
 
     st.markdown("## Performance Metrics Summary")
