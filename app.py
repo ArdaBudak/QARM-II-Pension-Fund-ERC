@@ -124,27 +124,34 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- LOGO HANDLING (Base64 Method for Perfect Centering) ---
+# --- LOGO HANDLING (TOP CENTER BANNER) ---
 def get_base64_of_bin_file(bin_file):
     with open(bin_file, 'rb') as f:
         data = f.read()
     return base64.b64encode(data).decode()
 
 try:
-    # Load and encode the image
     img_base64 = get_base64_of_bin_file("ERC Portfolio.png")
     
-    # Inject into Sidebar with Flexbox centering
-    st.sidebar.markdown(
+    # Inject HTML Div at the top of the main container
+    st.markdown(
         f"""
-        <div style="display: flex; justify-content: center; align-items: center; margin-top: 20px; margin-bottom: 40px;">
-            <img src="data:image/png;base64,{img_base64}" width="280" style="max-width: 90%;">
+        <div style="
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            width: 100%; 
+            padding-top: 10px; 
+            padding-bottom: 30px;
+        ">
+            <img src="data:image/png;base64,{img_base64}" 
+                 style="max-width: 350px; width: 100%; height: auto;">
         </div>
         """,
         unsafe_allow_html=True
     )
 except Exception as e:
-    st.sidebar.warning(f"Logo not found: {e}")
+    st.warning(f"Logo not found: {e}")
 
 # --- DATA LOADING FUNCTIONS ---
 
