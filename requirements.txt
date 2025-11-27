@@ -8,4 +8,4 @@ ecos
 fpdf
 scikit-learn
 kaleido
-chromium
+
