@@ -751,7 +751,7 @@ with tab3:
         # User controls for the simulation
         c1, c2 = st.columns(2)
         initial_inv = c1.number_input("Initial Investment ($)", value=100000, step=10000)
-        sim_years = c2.slider("Projection Years", 5, 30, 10)
+        sim_years = c2.slider("Projection Years", 5, 20, 10)
         
         with st.spinner("Running SOTA Historical Bootstrap Simulation..."):
             # SOTA Monte Carlo Call
