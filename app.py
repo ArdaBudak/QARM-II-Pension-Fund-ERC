@@ -25,18 +25,8 @@ st.markdown(
     :root { --primary-color: #f0f0f0; }
     .stApp { background-color: #000000; color: #f0f0f0; font-family: 'Times New Roman', serif; }
     .stSidebar { background-color: #111111; color: #f0f0f0; font-family: 'Times New Roman', serif; }
-    
-    /* Standard Buttons (Optimize) */
-    .stButton>button { 
-        background-color: #f0f0f0; 
-        color: #000000; 
-        border-radius: 8px; 
-        padding: 10px 20px; 
-        font-family: 'Times New Roman', serif; 
-    }
+    .stButton>button { background-color: #f0f0f0; color: #000000; border-radius: 8px; padding: 10px 20px; font-family: 'Times New Roman', serif; }
     .stButton>button:hover { background-color: #dddddd; }
-
-    /* Specific Styling for Download Button */
     [data-testid="stDownloadButton"] button {
         background-color: #FFFFFF !important;
         color: #000000 !important;
@@ -47,7 +37,6 @@ st.markdown(
         background-color: #f0f0f0 !important;
         border-color: #aaaaaa !important;
     }
-
     .stHeader { color: #f0f0f0; font-size: 32px; font-weight: bold; font-family: 'Times New Roman', serif; }
     .stExpander { background-color: #222222; color: #f0f0f0; font-family: 'Times New Roman', serif; }
     .stMultiSelect [data-testid=stMarkdownContainer] { color: #f0f0f0; font-family: 'Times New Roman', serif; }
@@ -68,45 +57,35 @@ st.markdown(
 
 @st.cache_data
 def load_data_bundle():
-    """
-    Loads returns, RF rate, and Transaction Costs with robust error handling.
-    Returns: (returns_df, rf_series, tx_cost_series)
-    """
     returns_wide = pd.DataFrame()
     rf_series = pd.Series(dtype=float)
     tx_cost_series = pd.Series(dtype=float)
 
-    # 1. Load Compustat & ETF (Critical Data)
     try:
         comp = pd.read_parquet("compustat_git.parquet")
         etf = pd.read_parquet("etf_git.parquet")
 
-        # Extract Risk Free Rate (RF)
         if "RF" in comp.columns:
             comp["date"] = pd.to_datetime(comp["date"])
             rf_raw = comp.groupby("date")["RF"].mean().sort_index()
             rf_series = rf_raw.fillna(0.0)
 
-        # Process Stocks
         comp_ret = comp[["date", "company_name", "monthly_return"]].copy()
         comp_ret["date"] = pd.to_datetime(comp_ret["date"])
         comp_ret = comp_ret.rename(columns={"company_name": "asset", "monthly_return": "ret"})
 
-        # Process ETFs
         etf_ret = etf[["date", "ETF", "return_monthly"]].copy()
         etf_ret["date"] = pd.to_datetime(etf_ret["date"])
         etf_ret = etf_ret.rename(columns={"ETF": "asset", "return_monthly": "ret"})
 
-        # Merge
         returns_long = pd.concat([comp_ret, etf_ret], ignore_index=True)
         returns_wide = returns_long.pivot(index="date", columns="asset", values="ret").sort_index()
         returns_wide.index = pd.to_datetime(returns_wide.index)
 
     except Exception as e:
-        st.error(f"CRITICAL: Error loading market data (Compustat/ETF): {e}")
+        st.error(f"CRITICAL: Error loading market data: {e}")
         return pd.DataFrame(), pd.Series(), pd.Series()
 
-    # 2. Load Transaction Costs (Optional/Auxiliary Data)
     try:
         tx_file = pd.read_parquet("OW_tx_costs.parquet")
         if "date" in tx_file.columns and "OW_tx_cost" in tx_file.columns:
@@ -134,7 +113,6 @@ def load_country_mapping():
         return {}
 
 def get_valid_assets(custom_data, start_date, end_date):
-    # Snap dates to Month End
     start_date = pd.to_datetime(start_date) + MonthEnd(0)
     end_date = pd.to_datetime(end_date) + MonthEnd(0)
     
@@ -142,10 +120,8 @@ def get_valid_assets(custom_data, start_date, end_date):
         return {"stocks": [], "etfs": []}
 
     subset = custom_data.loc[start_date:end_date]
-    # We allow assets that have at least ONE valid return in the window
     available_assets = set(subset.columns[subset.notna().any()].tolist())
     
-    # Distinguish Stocks vs ETFs
     try:
         comp = pd.read_parquet("compustat_git.parquet")
         all_stocks = set(comp["company_name"].unique())
@@ -156,8 +132,7 @@ def get_valid_assets(custom_data, start_date, end_date):
         valid_etfs = sorted(list(available_assets.intersection(all_etfs)))
         
         return {"stocks": valid_stocks, "etfs": valid_etfs}
-    except Exception:
-        # Fallback
+    except:
         return {"stocks": sorted(list(available_assets)), "etfs": []}
 
 def get_common_start_date(custom_data, selected_assets, user_start_date):
@@ -234,7 +209,7 @@ def compute_max_drawdown(cumulative_returns):
     return drawdowns.min() * 100
 
 @st.cache_data(show_spinner=True)
-def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=3):
+def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=4):
     custom_data = _custom_data 
     rf_data = _rf_data
     tx_cost_data = _tx_cost_data
@@ -271,8 +246,6 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         rc_over_time = {} 
         country_exposure_over_time = {}
         total_tc = 0.0
-        
-        # Initialize to zero to avoid reference error if loop fails
         rc_pct = np.zeros(n) 
 
         for j, reb_idx in enumerate(rebalance_indices):
@@ -297,7 +270,6 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                          cov = lw.covariance_ * ann_factor
                          w_active = solve_erc_weights(cov)
                          
-                         # Calculate RC pct for active assets
                          port_var = w_active @ cov @ w_active
                          sigma_p = np.sqrt(port_var)
                          mrc = cov @ w_active
@@ -309,7 +281,6 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                             idx = selected_assets.index(asset_name)
                             current_weights[idx] = w_val
                             current_rc[idx] = rc_val
-                            
                 except:
                     try:
                         vols = est_window_clean.std()
@@ -371,22 +342,15 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             st.warning("Risk Free Rate not found. Assuming 0%.")
             port_excess_returns = port_returns
             
-        # --- BENCHMARK CALCULATION (S&P 500 Excess) ---
         benchmark_asset = "SPDR S&P 500 ETF"
         cum_benchmark = pd.Series(dtype=float) 
-        
         if benchmark_asset in custom_data.columns:
-             # Extract S&P returns aligned to portfolio
              bench_ret = custom_data[benchmark_asset].reindex(port_returns.index).fillna(0.0)
-             
-             # Calculate Excess Return
              if not rf_data.empty:
                  aligned_rf_bench = rf_data.reindex(port_returns.index, method='ffill').fillna(0.0)
                  bench_excess = bench_ret - aligned_rf_bench
              else:
                  bench_excess = bench_ret
-                 
-             # Cumulative
              cum_benchmark = (1 + bench_excess).cumprod()
 
         ann_vol = port_returns.std() * np.sqrt(ann_factor)
@@ -405,7 +369,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             "sharpe": sharpe,
             "port_returns": port_excess_returns,
             "cum_port": cum_port_excess,
-            "cum_benchmark": cum_benchmark, # Added Benchmark
+            "cum_benchmark": cum_benchmark,
             "total_tc": total_tc * 100,
             "weights_df": pd.DataFrame(weights_over_time, index=selected_assets).T.sort_index(),
             "rc_df": pd.DataFrame(rc_over_time, index=selected_assets).T.sort_index(),
@@ -429,7 +393,6 @@ def create_pdf_report(results):
     pdf.set_font("Times", size=12)
     pdf.ln(10)
     
-    # Metrics
     pdf.set_font("Times", 'B', 12)
     pdf.cell(0, 10, "Key Performance Metrics (Excess Return)", ln=1)
     pdf.set_font("Times", size=12)
@@ -447,7 +410,6 @@ def create_pdf_report(results):
         
     pdf.ln(10)
     
-    # Allocations
     pdf.set_font("Times", 'B', 12)
     pdf.cell(0, 10, "Current Portfolio Allocation (>1%)", ln=1)
     pdf.set_font("Times", size=12)
@@ -460,27 +422,44 @@ def create_pdf_report(results):
         if weight > 0.01:
             pdf.cell(0, 10, f"{asset}: {weight*100:.2f}%", ln=1)
 
-    # Charts
     try:
-        def add_chart_to_pdf(fig, title):
+        # Helper: Create clean white-bg chart for PDF
+        def add_chart_to_pdf(fig, title, height=600):
             pdf.add_page()
             pdf.set_font("Times", 'B', 14)
             pdf.cell(0, 10, title, ln=1, align='C')
+            
+            # Create a static copy to avoid messing with the web view
+            static_fig = go.Figure(fig)
+            static_fig.update_layout(
+                template="plotly_white",  # Force white background
+                paper_bgcolor="white",
+                plot_bgcolor="white",
+                font=dict(color="black"),
+                width=1000, 
+                height=height
+            )
+            
             with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmpfile:
-                # Ensure dimensions are explicit for kaleido
-                fig.update_layout(width=1000, height=600)
-                fig.write_image(tmpfile.name)
+                static_fig.write_image(tmpfile.name)
                 pdf.image(tmpfile.name, x=10, y=30, w=190)
 
-        add_chart_to_pdf(plot_cumulative_performance(results), "Cumulative Performance")
+        # 1. Cumulative Performance
+        add_chart_to_pdf(plot_cumulative_performance(results), "Cumulative Performance", height=700)
+        
+        # 2. Weights Evolution
         add_chart_to_pdf(plot_weights_over_time(results), "Weights Evolution")
-        add_chart_to_pdf(plot_risk_evolution(results), "Risk Contribution Evolution") 
+        
+        # 3. Risk Evolution
+        add_chart_to_pdf(plot_risk_evolution(results), "Risk Contributions Over Time") 
+        
+        # 4. Country Exposure
         add_chart_to_pdf(plot_country_exposure_over_time(results), "Country Exposure")
         
     except Exception as e:
         pdf.ln(10)
         pdf.set_font("Times", 'I', 10)
-        pdf.cell(0, 10, f"Charts missing: {str(e)} (Install 'kaleido')", ln=1)
+        pdf.cell(0, 10, f"Charts could not be generated: {str(e)}", ln=1)
 
     return pdf.output(dest='S').encode('latin-1')
 
@@ -514,7 +493,6 @@ def plot_cumulative_performance(results):
         line=dict(color="#0D6EFD", width=3)
     ))
     
-    # Benchmark Trace (S&P 500)
     if not cum_bench.empty:
         fig.add_trace(go.Scatter(
             x=cum_bench.index, 
@@ -531,8 +509,7 @@ def plot_cumulative_performance(results):
         log_min = np.log10(min_val)
         log_max = np.log10(max_val)
         log_range = log_max - log_min
-        # Reduce grid lines (remove half roughly) by dividing by 3 instead of 6
-        raw_dtick = log_range / 3 
+        raw_dtick = log_range / 2.5 # Reduced grid density further
         magnitude = 10 ** np.floor(np.log10(raw_dtick))
         normalized = raw_dtick / magnitude
         if normalized < 1.5: nice_dtick = 1.0 * magnitude
@@ -552,7 +529,7 @@ def plot_cumulative_performance(results):
             tickformat=".2f",
             minor=dict(showgrid=False) 
         ),
-        height=650 # Taller chart
+        height=650 
     )
     return fig
 
@@ -588,11 +565,11 @@ def plot_country_exposure_over_time(results):
 tab0, tab1, tab2, tab3 = st.tabs(["How to Use", "Asset Selection", "Portfolio Results", "About Us"])
 
 with tab0:
-    # --- EMBEDDED CHATBOT (Silent + Dark Mode) ---
+    # --- EMBEDDED CHATBOT ---
     components.html(
         """
         <style>
-            body { background-color: #000000; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+            body { margin: 0; padding: 0; background-color: #000000; height: 100vh; width: 100%; overflow: hidden; }
             .vfrc-widget--chat { background-color: #000000 !important; height: 100% !important; }
         </style>
         <script type="text/javascript">
@@ -603,12 +580,8 @@ with tab0:
                   verify: { projectID: '69283f7c489631e28656d2c1' },
                   url: 'https://general-runtime.voiceflow.com',
                   versionID: 'production',
-                  render: {
-                      mode: 'embedded',
-                      target: document.body
-                  },
+                  render: { mode: 'embedded', target: document.body },
                   autostart: true
-                  // Voice removed
                 });
               }
               v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs";
