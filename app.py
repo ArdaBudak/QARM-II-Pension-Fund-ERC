@@ -33,7 +33,7 @@ st.markdown(
         --text-color: {TEXT_COLOR};
         --font: 'Times New Roman', serif;
     }}
-    }
+    
     
     /* Optional: Change the bottom border line of the tab container */
     div[data-baseweb="tab-list"] {
