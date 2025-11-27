@@ -660,12 +660,39 @@ def plot_country_exposure_over_time(results):
 tab0, tab1, tab2, tab3 = st.tabs(["How to Use", "Asset Selection", "Portfolio Results", "About Us"])
 
 with tab0:
-    # --- EMBEDDED CHATBOT (Light Mode to match app) ---
+    # --- EMBEDDED CHATBOT (Fixed Position Fix) ---
     components.html(
         """
         <style>
-            body { margin: 0; padding: 0; background-color: #FFFFFF; height: 100vh; width: 100%; overflow: hidden; }
-            .vfrc-widget--chat { background-color: #FFFFFF !important; height: 100% !important; }
+            body { 
+                margin: 0; 
+                padding: 0; 
+                background-color: #FFFFFF; 
+                height: 100vh; 
+                width: 100%; 
+                overflow: hidden; 
+            }
+            /* Force the widget to fill the iframe and remove floating behavior */
+            #voiceflow-chat {
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                bottom: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+            }
+            .vfrc-widget--chat { 
+                background-color: #FFFFFF !important; 
+                height: 100% !important; 
+                width: 100% !important;
+                max-height: none !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+            }
         </style>
         <script type="text/javascript">
           (function(d, t) {
@@ -675,7 +702,10 @@ with tab0:
                   verify: { projectID: '69283f7c489631e28656d2c1' },
                   url: 'https://general-runtime.voiceflow.com',
                   versionID: 'production',
-                  render: { mode: 'embedded', target: document.body },
+                  render: { 
+                      mode: 'embedded',  # Use embedded mode
+                      target: document.body # Target the iframe body directly
+                  },
                   autostart: true
                 });
               }
@@ -688,7 +718,6 @@ with tab0:
         height=850, 
         scrolling=False
     )
-
 with tab1:
     st.title("Asset Selection")
     custom_data, rf_data, tx_cost_data = load_data_bundle()
