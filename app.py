@@ -156,15 +156,16 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# --- LOGO HANDLING (OVERLAY ON BANNER) ---
 if logo_base64:
     st.markdown(
         f"""
         <div style="
-            position: absolute;
-            top: 1.5rem; 
+            position: fixed; /* Use fixed to stay pinned to the viewport like the header */
+            top: 1rem;       /* Adjust this value to move it up/down within the 8rem banner */
             left: 50%;
             transform: translateX(-50%);
-            z-index: 1002; 
+            z-index: 10000;  /* Extremely high z-index to ensure it's on top of everything */
             width: 100%;
             text-align: center;
             pointer-events: none;
@@ -175,6 +176,8 @@ if logo_base64:
         """,
         unsafe_allow_html=True
     )
+else:
+    st.warning("Logo not found.")
 
 # --- DATA LOADING ---
 @st.cache_data
