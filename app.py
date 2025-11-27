@@ -630,24 +630,59 @@ with tab2:
 
 with tab3:
    
+    with tab3:
+    st.title("About Us")
     st.write("""
     Welcome to the Pension Fund Optimizer!
+
     We are a dedicated team of financial experts and developers passionate about helping individuals and institutions optimize their pension funds for maximum efficiency and risk management.
+
     Our tool uses advanced optimization techniques, specifically Dynamic Equal Risk Contribution (ERC) with annual rebalancing, to create balanced portfolios that aim to equalize the risk contributions from each asset over time.
+
     Built with Streamlit and powered by open-source libraries, this app provides an intuitive interface for selecting assets, analyzing historical data, and visualizing results.
+
     If you have any questions or feedback, feel free to reach out at support@pensionoptimizer.com.
+
     Thank you for using our tool! 🎉
     """)
+
     st.markdown("---")
     st.markdown("## 👥 Meet the Team")
     st.markdown("<br>", unsafe_allow_html=True)
+
     team = [
-        {"name": "Lucas Jaccard", "role": "Frontend Developer", "desc": "Lucas designs the app’s visual experience.", "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas_JACCARD.JPG"},
-        {"name": "Audrey Champion", "role": "Financial Engineer", "desc": "Audrey focuses on strategy design.", "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey_CHAMPION.JPG"},
-        {"name": "Arda Budak", "role": "Quantitative Analyst", "desc": "Arda applies quantitative methods.", "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda_BUDAK.JPG"},
-        {"name": "Rihem Rhaiem", "role": "Data Scientist", "desc": "Rihem specializes in financial data analytics.", "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem_RHAIEM.JPG"},
-        {"name": "Edward Arion", "role": "Backend Developer", "desc": "Edward ensures computational stability.", "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward_ARION.JPG"},
+        {
+            "name": "Lucas Jaccard",
+            "role": "Frontend Developer",
+            "desc": "Lucas designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas_JACCARD.JPG"
+        },
+        {
+            "name": "Audrey Champion",
+            "role": "Financial Engineer",
+            "desc": "Audrey focuses on translating theory into practice, helping design the pension fund strategy and ensuring academic rigor in implementation.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey_CHAMPION.JPG"
+        },
+        {
+            "name": "Arda Budak",
+            "role": "Quantitative Analyst",
+            "desc": "Arda applies quantitative methods and stochastic simulations to enhance risk control and portfolio diversification within the project.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda_BUDAK.JPG"
+        },
+        {
+            "name": "Rihem Rhaiem",
+            "role": "Data Scientist",
+            "desc": "Rihem specializes in financial data analytics and portfolio optimization models, contributing quantitative insight to the ERC framework.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem_RHAIEM.JPG"
+        },
+        {
+            "name": "Edward Arion",
+            "role": "Backend Developer",
+            "desc": "Edward ensures computational stability and performance, integrating optimization algorithms efficiently within the Streamlit app.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward_ARION.JPG"
+        },
     ]
+
     cols = st.columns(len(team))
     for i, member in enumerate(team):
         with cols[i]:
