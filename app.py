@@ -468,10 +468,6 @@ def run_monte_carlo(mu, sigma, years=10, simulations=500, initial_capital=100000
     n_steps = int(years * 12)
     
     # 1. Random Shocks: Normal Distribution
-    # 
-
-[Image of VaR Distribution Chart]
- triggers here implicitly as we use Normal Dist
     Z = np.random.normal(0, 1, (simulations, n_steps))
     
     # 2. GBM Equation: S_t = S_{t-1} * exp((mu - 0.5*sigma^2)*dt + sigma*sqrt(dt)*Z)
