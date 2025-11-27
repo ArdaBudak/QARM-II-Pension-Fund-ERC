@@ -7,3 +7,4 @@ scipy
 ecos
 fpdf
 scikit-learn
+kaleido
