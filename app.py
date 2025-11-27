@@ -550,7 +550,7 @@ with tab0:
     )
 
 with tab1:
-    st.title("Asset Selection")
+    
     custom_data, rf_data, tx_cost_data = load_data_bundle()
     if custom_data.empty:
         st.error("Data error.")
@@ -579,7 +579,7 @@ with tab1:
         else: st.error("End Date must be after Start Date.")
 
 with tab2:
-    st.title("Portfolio Results")
+    
     if "results" in st.session_state:
         res = st.session_state.results
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -629,7 +629,7 @@ with tab2:
     else: st.info("Run optimization first.")
 
 with tab3:
-    st.title("About Us")
+   
     st.write("""
     Welcome to the Pension Fund Optimizer!
     We are a dedicated team of financial experts and developers passionate about helping individuals and institutions optimize their pension funds for maximum efficiency and risk management.
