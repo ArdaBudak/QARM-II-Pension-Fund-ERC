@@ -14,14 +14,23 @@ from sklearn.covariance import LedoitWolf
 
 # Custom styling
 st.set_page_config(page_title="Pension Fund Optimizer", layout="wide")
+
+# --- LOGO HANDLING (New Approach) ---
+# We use st.sidebar.image instead of st.logo to allow centering and resizing
 try:
-    st.logo("ERC Portfolio.png")
+    with st.sidebar:
+        # Use columns to center the logo perfectly
+        # Adjust the middle column width ratio to make logo bigger/smaller
+        # [1, 3, 1] means the image takes 3/5ths of the sidebar width.
+        l, m, r = st.columns([0.2, 3, 0.2]) 
+        with m:
+            st.image("ERC Portfolio.png", width=250) # Explicit width for control
 except:
     pass 
 
-# --- MONOCHROME THEME CONFIGURATION ---
-PRIMARY_GREY = "#666666"    # Dark Grey for Buttons (Visible on white)
-LIGHT_GREY = "#E0E0E0"      # Light Grey for Tags
+# --- THEME CONFIGURATION ---
+BUTTON_COLOR = "#E0E0E0"    # Light Grey for Optimize Button
+BUTTON_TEXT = "#000000"     # Black Text
 LIGHT_BG = "#FFFFFF"        # Main Background
 SIDEBAR_BG = "#F5F5F5"      # Sidebar Background
 TEXT_COLOR = "#000000"      # Black Text
@@ -30,7 +39,7 @@ st.markdown(
     f"""
     <style>
     :root {{
-        --primary-color: {PRIMARY_GREY};
+        --primary-color: {BUTTON_COLOR};
         --background-color: {LIGHT_BG};
         --secondary-background-color: {SIDEBAR_BG};
         --text-color: {TEXT_COLOR};
@@ -44,7 +53,7 @@ st.markdown(
         font-family: 'Times New Roman', serif;
     }}
     
-    /* Sidebar / Banner Background */
+    /* Sidebar Background */
     .stSidebar {{
         background-color: {SIDEBAR_BG};
     }}
@@ -53,32 +62,25 @@ st.markdown(
         color: {TEXT_COLOR};
     }}
 
-    /* --- LOGO SIZING (2x Bigger) --- */
-    /* Targets the image inside the sidebar header */
-    [data-testid="stSidebarHeader"] img {{
-        height: 20rem !important;  /* Standard is usually ~3rem */
-        width: auto !important;
-        max-width: 100% !important;
-    }}
-    
-    /* --- BUTTONS (Grey Theme) --- */
+    /* --- BUTTONS (Optimize) --- */
     .stButton>button {{ 
-        background-color: {PRIMARY_GREY}; 
-        color: #FFFFFF; 
+        background-color: {BUTTON_COLOR}; 
+        color: {BUTTON_TEXT}; 
         border-radius: 8px; 
         padding: 10px 24px; 
         font-family: 'Times New Roman', serif; 
-        border: none;
+        border: 1px solid #CCCCCC; /* Subtle border */
         font-weight: bold;
         transition: all 0.3s ease;
     }}
     .stButton>button:hover {{ 
-        background-color: #444444; /* Darker Grey on Hover */
-        box-shadow: 0 4px 14px 0 rgba(0,0,0, 0.2);
-        color: #FFFFFF;
+        background-color: #D5D5D5; /* Slightly darker grey on hover */
+        border-color: #999999;
+        color: {BUTTON_TEXT};
+        box-shadow: 0 4px 6px rgba(0,0,0, 0.1);
     }}
 
-    /* Download Button (White with Black Text & Border) */
+    /* --- DOWNLOAD BUTTON (Clean White) --- */
     [data-testid="stDownloadButton"] button {{
         background-color: #FFFFFF !important;
         color: #000000 !important;
@@ -86,22 +88,21 @@ st.markdown(
         font-weight: bold !important;
     }}
     [data-testid="stDownloadButton"] button:hover {{
-        background-color: #f0f0f0 !important;
-        border-color: #999999 !important;
+        background-color: #f9f9f9 !important;
+        border-color: #666666 !important;
     }}
 
-    /* --- MULTISELECT TAGS (Light Grey instead of Red) --- */
+    /* --- MULTISELECT TAGS (Light Grey) --- */
     span[data-baseweb="tag"] {{
-        background-color: {LIGHT_GREY} !important;
+        background-color: #E8E8E8 !important;
         color: {TEXT_COLOR} !important;
-        border: 1px solid #cccccc;
+        border: 1px solid #d0d0d0;
     }}
-    /* The 'X' icon in the tag */
     span[data-baseweb="tag"] svg {{
         fill: {TEXT_COLOR} !important;
     }}
 
-    /* Headers & Text - Force Black */
+    /* Headers & Text */
     h1, h2, h3, h4, h5, h6, .stHeader {{ 
         color: {TEXT_COLOR} !important; 
         font-family: 'Times New Roman', serif; 
@@ -291,7 +292,7 @@ def compute_max_drawdown(cumulative_returns):
     return drawdowns.min() * 100
 
 @st.cache_data(show_spinner=True)
-def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=4):
+def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=5):
     custom_data = _custom_data 
     rf_data = _rf_data
     tx_cost_data = _tx_cost_data
@@ -475,7 +476,6 @@ def create_pdf_report(results):
     pdf.set_font("Times", size=12)
     pdf.ln(10)
     
-    # Metrics
     pdf.set_font("Times", 'B', 12)
     pdf.cell(0, 10, "Key Performance Metrics (Excess Return)", ln=1)
     pdf.set_font("Times", size=12)
@@ -493,7 +493,6 @@ def create_pdf_report(results):
         
     pdf.ln(10)
     
-    # Allocations
     pdf.set_font("Times", 'B', 12)
     pdf.cell(0, 10, "Current Portfolio Allocation (>1%)", ln=1)
     pdf.set_font("Times", size=12)
@@ -506,7 +505,6 @@ def create_pdf_report(results):
         if weight > 0.01:
             pdf.cell(0, 10, f"{asset}: {weight*100:.2f}%", ln=1)
 
-    # Charts
     try:
         def add_chart_to_pdf(fig, title, height=600):
             pdf.add_page()
@@ -515,7 +513,7 @@ def create_pdf_report(results):
             
             static_fig = go.Figure(fig)
             static_fig.update_layout(
-                template="plotly_white",  # White background for printing
+                template="plotly_white", 
                 paper_bgcolor="white",
                 plot_bgcolor="white",
                 font=dict(color="black", family="Times New Roman"),
