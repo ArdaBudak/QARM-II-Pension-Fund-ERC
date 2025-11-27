@@ -410,15 +410,24 @@ def plot_country_exposure_over_time(results):
 tab0, tab1, tab2, tab3 = st.tabs(["How to Use", "Asset Selection", "Portfolio Results", "About Us"])
 
 with tab0:
-    st.title("How to Use")
-    
-    # --- EMBEDDED CHATBOT (Silent + Dark Mode) ---
+    # --- EMBEDDED CHATBOT (Fixed Layout) ---
     components.html(
         """
         <style>
-            body { background-color: #000000; margin: 0; padding: 0; }
+            /* CRITICAL FIX: Force body to fill exactly the iframe height */
+            body { 
+                margin: 0; 
+                padding: 0; 
+                background-color: #000000;
+                height: 100vh;       /* 100% of Viewport Height */
+                width: 100%;
+                overflow: hidden;    /* Prevents the outer frame from scrolling */
+            }
+            
+            /* Optional: Styling to match your app */
             .vfrc-widget--chat {
                 background-color: #000000 !important;
+                height: 100% !important; /* Ensure widget fills the body */
             }
         </style>
         <script type="text/javascript">
@@ -434,7 +443,6 @@ with tab0:
                       target: document.body
                   },
                   autostart: true
-                  // Voice removed for silence
                 });
               }
               v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs";
@@ -443,8 +451,8 @@ with tab0:
           })(document, 'script');
         </script>
         """,
-        height=850, 
-        scrolling=False
+        height=850, # Keeps the iframe tall enough
+        scrolling=False # Keeps Streamlit from adding a secondary scrollbar
     )
 
 with tab1:
