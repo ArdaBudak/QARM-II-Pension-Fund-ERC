@@ -34,6 +34,8 @@ def get_base64_of_bin_file(bin_file):
 banner_base64 = get_base64_of_bin_file("Gray-Manhattan-Morning-Wallpaper-Mural.jpg")
 logo_base64 = get_base64_of_bin_file("ERC Portfolio.png")
 
+# --- CSS STYLING (UPDATED TO FIX FLICKER) ---
+# We inject the logo into the header::after pseudo-element so it stays stable.
 st.markdown(
     f"""
     <style>
@@ -59,13 +61,32 @@ st.markdown(
         left: 0 !important;
         right: 0 !important;
         background-image: url("data:image/jpg;base64,{banner_base64}") !important;
-        background-size: cover !important;       
+        background-size: cover !important;        
         background-position: center 45% !important; 
         background-repeat: no-repeat !important;
-        height: 8rem !important;                 
+        height: 8rem !important;                  
         z-index: 1001 !important;
         background-color: #FFFFFF !important;
         border-bottom: 1px solid #ccc;
+    }}
+    
+    /* --- LOGO FIX: Use CSS Pseudo-element --- */
+    /* This attaches the logo to the header so it doesn't reload on every interaction */
+    header::after {{
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 100%;
+        max-width: 300px;
+        height: 80%;
+        background-image: url("data:image/png;base64,{logo_base64}");
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        z-index: 1002;
+        pointer-events: none;
     }}
     
     header .decoration {{ display: none; }}
@@ -156,28 +177,9 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- LOGO HANDLING (OVERLAY ON BANNER) ---
-if logo_base64:
-    st.markdown(
-        f"""
-        <div style="
-            position: fixed; /* Use fixed to stay pinned to the viewport like the header */
-            top: 1.5rem;       /* Adjust this value to move it up/down within the 8rem banner */
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10000;  /* Extremely high z-index to ensure it's on top of everything */
-            width: 100%;
-            text-align: center;
-            pointer-events: none;
-        ">
-            <img src="data:image/png;base64,{logo_base64}" 
-                 style="max-width: 300px; width: 80%; height: auto; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-else:
-    st.warning("Logo not found.")
+# --- (OLD LOGO BLOCK REMOVED HERE) ---
+# The logic that used to be here ("if logo_base64: st.markdown...") 
+# has been moved into the CSS above.
 
 # --- DATA LOADING ---
 @st.cache_data
