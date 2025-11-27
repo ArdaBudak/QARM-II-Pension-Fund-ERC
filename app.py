@@ -68,27 +68,36 @@ st.markdown(
 
 @st.cache_data
 def load_data_bundle():
+    """
+    Loads returns, RF rate, and Transaction Costs with robust error handling.
+    Returns: (returns_df, rf_series, tx_cost_series)
+    """
     returns_wide = pd.DataFrame()
     rf_series = pd.Series(dtype=float)
     tx_cost_series = pd.Series(dtype=float)
 
+    # 1. Load Compustat & ETF (Critical Data)
     try:
         comp = pd.read_parquet("compustat_git.parquet")
         etf = pd.read_parquet("etf_git.parquet")
 
+        # Extract Risk Free Rate (RF)
         if "RF" in comp.columns:
             comp["date"] = pd.to_datetime(comp["date"])
             rf_raw = comp.groupby("date")["RF"].mean().sort_index()
             rf_series = rf_raw.fillna(0.0)
 
+        # Process Stocks
         comp_ret = comp[["date", "company_name", "monthly_return"]].copy()
         comp_ret["date"] = pd.to_datetime(comp_ret["date"])
         comp_ret = comp_ret.rename(columns={"company_name": "asset", "monthly_return": "ret"})
 
+        # Process ETFs
         etf_ret = etf[["date", "ETF", "return_monthly"]].copy()
         etf_ret["date"] = pd.to_datetime(etf_ret["date"])
         etf_ret = etf_ret.rename(columns={"ETF": "asset", "return_monthly": "ret"})
 
+        # Merge
         returns_long = pd.concat([comp_ret, etf_ret], ignore_index=True)
         returns_wide = returns_long.pivot(index="date", columns="asset", values="ret").sort_index()
         returns_wide.index = pd.to_datetime(returns_wide.index)
@@ -97,6 +106,7 @@ def load_data_bundle():
         st.error(f"CRITICAL: Error loading market data (Compustat/ETF): {e}")
         return pd.DataFrame(), pd.Series(), pd.Series()
 
+    # 2. Load Transaction Costs (Optional/Auxiliary Data)
     try:
         tx_file = pd.read_parquet("OW_tx_costs.parquet")
         if "date" in tx_file.columns and "OW_tx_cost" in tx_file.columns:
@@ -124,6 +134,7 @@ def load_country_mapping():
         return {}
 
 def get_valid_assets(custom_data, start_date, end_date):
+    # Snap dates to Month End
     start_date = pd.to_datetime(start_date) + MonthEnd(0)
     end_date = pd.to_datetime(end_date) + MonthEnd(0)
     
@@ -131,9 +142,23 @@ def get_valid_assets(custom_data, start_date, end_date):
         return {"stocks": [], "etfs": []}
 
     subset = custom_data.loc[start_date:end_date]
-    available_assets = subset.columns[subset.notna().any()].tolist()
+    # We allow assets that have at least ONE valid return in the window
+    available_assets = set(subset.columns[subset.notna().any()].tolist())
     
-    return {"stocks": available_assets, "etfs": []} 
+    # Distinguish Stocks vs ETFs
+    try:
+        comp = pd.read_parquet("compustat_git.parquet")
+        all_stocks = set(comp["company_name"].unique())
+        etf = pd.read_parquet("etf_git.parquet")
+        all_etfs = set(etf["ETF"].unique())
+        
+        valid_stocks = sorted(list(available_assets.intersection(all_stocks)))
+        valid_etfs = sorted(list(available_assets.intersection(all_etfs)))
+        
+        return {"stocks": valid_stocks, "etfs": valid_etfs}
+    except Exception:
+        # Fallback
+        return {"stocks": sorted(list(available_assets)), "etfs": []}
 
 def get_common_start_date(custom_data, selected_assets, user_start_date):
     user_start_date = pd.to_datetime(user_start_date) + MonthEnd(0)
@@ -208,9 +233,8 @@ def compute_max_drawdown(cumulative_returns):
     drawdowns = (cumulative_returns - running_max) / running_max
     return drawdowns.min() * 100
 
-# Added _version to force cache refresh
 @st.cache_data(show_spinner=True)
-def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=2):
+def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=3):
     custom_data = _custom_data 
     rf_data = _rf_data
     tx_cost_data = _tx_cost_data
@@ -348,6 +372,24 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         else:
             st.warning("Risk Free Rate not found. Assuming 0%.")
             port_excess_returns = port_returns
+            
+        # --- BENCHMARK CALCULATION (S&P 500 Excess) ---
+        benchmark_asset = "SPDR S&P 500 ETF"
+        cum_benchmark = pd.Series(dtype=float) 
+        
+        if benchmark_asset in custom_data.columns:
+             # Extract S&P returns aligned to portfolio
+             bench_ret = custom_data[benchmark_asset].reindex(port_returns.index).fillna(0.0)
+             
+             # Calculate Excess Return
+             if not rf_data.empty:
+                 aligned_rf_bench = rf_data.reindex(port_returns.index, method='ffill').fillna(0.0)
+                 bench_excess = bench_ret - aligned_rf_bench
+             else:
+                 bench_excess = bench_ret
+                 
+             # Cumulative
+             cum_benchmark = (1 + bench_excess).cumprod()
 
         ann_vol = port_returns.std() * np.sqrt(ann_factor)
         ann_excess_ret = port_excess_returns.mean() * ann_factor
@@ -365,6 +407,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             "sharpe": sharpe,
             "port_returns": port_excess_returns,
             "cum_port": cum_port_excess,
+            "cum_benchmark": cum_benchmark, # Added Benchmark
             "total_tc": total_tc * 100,
             "weights_df": pd.DataFrame(weights_over_time, index=selected_assets).T.sort_index(),
             "rc_df": pd.DataFrame(rc_over_time, index=selected_assets).T.sort_index(),
@@ -388,6 +431,7 @@ def create_pdf_report(results):
     pdf.set_font("Times", size=12)
     pdf.ln(10)
     
+    # Metrics
     pdf.set_font("Times", 'B', 12)
     pdf.cell(0, 10, "Key Performance Metrics (Excess Return)", ln=1)
     pdf.set_font("Times", size=12)
@@ -405,6 +449,7 @@ def create_pdf_report(results):
         
     pdf.ln(10)
     
+    # Allocations
     pdf.set_font("Times", 'B', 12)
     pdf.cell(0, 10, "Current Portfolio Allocation (>1%)", ln=1)
     pdf.set_font("Times", size=12)
@@ -417,6 +462,7 @@ def create_pdf_report(results):
         if weight > 0.01:
             pdf.cell(0, 10, f"{asset}: {weight*100:.2f}%", ln=1)
 
+    # Charts
     try:
         def add_chart_to_pdf(fig, title):
             pdf.add_page()
@@ -427,8 +473,8 @@ def create_pdf_report(results):
                 pdf.image(tmpfile.name, x=10, y=30, w=190)
 
         add_chart_to_pdf(plot_cumulative_performance(results), "Cumulative Performance")
-        add_chart_to_pdf(plot_risk_evolution(results), "Risk Contributions Over Time") 
         add_chart_to_pdf(plot_weights_over_time(results), "Weights Evolution")
+        add_chart_to_pdf(plot_risk_evolution(results), "Risk Contribution Evolution") 
         add_chart_to_pdf(plot_country_exposure_over_time(results), "Country Exposure")
         
     except Exception as e:
@@ -439,7 +485,6 @@ def create_pdf_report(results):
     return pdf.output(dest='S').encode('latin-1')
 
 def plot_risk_evolution(results):
-    # Check if rc_df exists (backward compatibility safety)
     if "rc_df" not in results:
         return go.Figure()
     
@@ -457,8 +502,26 @@ def plot_risk_evolution(results):
 
 def plot_cumulative_performance(results):
     cum_series = results["cum_port"]
+    cum_bench = results.get("cum_benchmark", pd.Series(dtype=float))
+    
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=cum_series.index, y=cum_series.values, mode="lines", name="Portfolio", line=dict(color="#0D6EFD", width=3)))
+    fig.add_trace(go.Scatter(
+        x=cum_series.index, 
+        y=cum_series.values, 
+        mode="lines", 
+        name="Portfolio", 
+        line=dict(color="#0D6EFD", width=3)
+    ))
+    
+    # Benchmark Trace (S&P 500)
+    if not cum_bench.empty:
+        fig.add_trace(go.Scatter(
+            x=cum_bench.index, 
+            y=cum_bench.values, 
+            mode="lines", 
+            name="S&P 500 (Excess)", 
+            line=dict(color="#FFFFFF", width=2, dash="dash")
+        ))
     
     min_val = cum_series.min()
     max_val = cum_series.max()
@@ -565,12 +628,13 @@ with tab1:
         end_date = col2.date_input("End Date", value=max_date, min_value=min_date, max_value=max_date)
         
         if start_date < end_date:
-            all_assets = custom_data.columns.tolist()
-            # Snap dates for validation
             valid = get_valid_assets(custom_data, start_date, end_date)
             
             col1, col2 = st.columns(2)
-            selected_assets = col1.multiselect("Select Assets", all_assets)
+            selected_stocks = col1.multiselect("Select Stocks", valid["stocks"])
+            selected_etfs = col2.multiselect("Select ETFs", valid["etfs"])
+            
+            selected_assets = selected_stocks + selected_etfs
             
             rebalance_freq = st.selectbox("Rebalance Frequency", ["Quarterly", "Semi-Annually", "Annually"], index=2)
             
@@ -637,4 +701,61 @@ with tab2:
 
 with tab3:
     st.title("About Us")
-    st.write("Pension Fund Optimizer Team.")
+    st.write("""
+    Welcome to the Pension Fund Optimizer!
+
+    We are a dedicated team of financial experts and developers passionate about helping individuals and institutions optimize their pension funds for maximum efficiency and risk management.
+
+    Our tool uses advanced optimization techniques, specifically Dynamic Equal Risk Contribution (ERC) with annual rebalancing, to create balanced portfolios that aim to equalize the risk contributions from each asset over time.
+
+    Built with Streamlit and powered by open-source libraries, this app provides an intuitive interface for selecting assets, analyzing historical data, and visualizing results.
+
+    If you have any questions or feedback, feel free to reach out at support@pensionoptimizer.com.
+
+    Thank you for using our tool! 🎉
+    """)
+
+    st.markdown("---")
+    st.markdown("## 👥 Meet the Team")
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    team = [
+        {
+            "name": "Lucas Jaccard",
+            "role": "Frontend Developer",
+            "desc": "Lucas designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas_JACCARD.JPG"
+        },
+        {
+            "name": "Audrey Champion",
+            "role": "Financial Engineer",
+            "desc": "Audrey focuses on translating theory into practice, helping design the pension fund strategy and ensuring academic rigor in implementation.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey_CHAMPION.JPG"
+        },
+        {
+            "name": "Arda Budak",
+            "role": "Quantitative Analyst",
+            "desc": "Arda applies quantitative methods and stochastic simulations to enhance risk control and portfolio diversification within the project.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda_BUDAK.JPG"
+        },
+        {
+            "name": "Rihem Rhaiem",
+            "role": "Data Scientist",
+            "desc": "Rihem specializes in financial data analytics and portfolio optimization models, contributing quantitative insight to the ERC framework.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem_RHAIEM.JPG"
+        },
+        {
+            "name": "Edward Arion",
+            "role": "Backend Developer",
+            "desc": "Edward ensures computational stability and performance, integrating optimization algorithms efficiently within the Streamlit app.",
+            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward_ARION.JPG"
+        },
+    ]
+
+    cols = st.columns(len(team))
+    for i, member in enumerate(team):
+        with cols[i]:
+            st.image(member["photo"], width=150)
+            st.markdown(f"### {member['name']}")
+            st.markdown(f"**{member['role']}**")
+            st.write(member["desc"])
