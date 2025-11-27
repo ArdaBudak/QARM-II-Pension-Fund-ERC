@@ -51,7 +51,7 @@ st.markdown(
     /* --- REDUCED UPPER BAR SIZE --- */
     /* Pulls the main content up closer to the top */
     .block-container {{
-        padding-top: 12rem !important; 
+        padding-top: 4rem !important; 
         padding-bottom: 1rem !important;
     }}
     
