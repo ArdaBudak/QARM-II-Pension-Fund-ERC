@@ -119,7 +119,6 @@ def get_valid_assets(custom_data, start_date, end_date):
         return {"stocks": [], "etfs": []}
 
     subset = custom_data.loc[start_date:end_date]
-    # We allow assets that have at least ONE valid return in the window
     available_assets = subset.columns[subset.notna().any()].tolist()
     
     return {"stocks": available_assets, "etfs": []} 
@@ -133,7 +132,6 @@ def get_common_start_date(custom_data, selected_assets, user_start_date):
         return None
     
     # Find the earliest date where ANY of the selected assets has data
-    # (We don't force ALL to exist, just one is enough to start)
     first_valid_series = custom_data[selected_assets].apply(lambda col: col.first_valid_index())
     overall_first_valid = first_valid_series.min()
     
@@ -141,7 +139,6 @@ def get_common_start_date(custom_data, selected_assets, user_start_date):
          st.error("No valid data found for any selected asset.")
          return None
 
-    # If user selects 2000, but data starts 2002, jump to 2002
     if overall_first_valid > user_start_date:
         st.warning(f"⚠️ No data available at start date. Optimization will begin on **{overall_first_valid.date()}**.")
         return overall_first_valid
@@ -237,64 +234,49 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         weights_over_time = {}
         country_exposure_over_time = {}
         total_tc = 0.0
-        last_cov = None
+        last_cov = None # Helper for logging, but we will recalc at end
 
         for j, reb_idx in enumerate(rebalance_indices):
             rebal_date = period_dates[reb_idx]
             global_reb_pos = full_returns.index.get_loc(rebal_date)
             start_pos = max(0, global_reb_pos - lookback_months)
             
-            # Get lookback window
             est_window = full_returns.iloc[start_pos:global_reb_pos]
-            
-            # --- DYNAMIC UNIVERSE SELECTION (The "Proper" Fix) ---
-            # 1. Filter for assets that exist (non-NaN) for the ENTIRE lookback period.
-            # This prevents using assets that just IPO'd yesterday and have 1 data point.
             est_window_clean = est_window.dropna(axis=1, how='any')
             valid_assets_in_window = est_window_clean.columns.tolist()
             
             current_weights = np.zeros(n)
             
             if len(valid_assets_in_window) > 0:
-                # Optimization Logic
                 try:
-                    # Special Case: Only 1 asset exists (ERC impossible, so 100% weight)
+                    # Special Case: 1 Asset
                     if len(valid_assets_in_window) == 1:
                          w_active = np.array([1.0])
                     else:
-                         # Standard ERC
                          lw = LedoitWolf().fit(est_window_clean.values)
                          cov = lw.covariance_ * ann_factor
                          w_active = solve_erc_weights(cov)
-                         last_cov = cov # Save for risk metrics
-
-                    # Map active weights back to full list
+                    
                     if w_active is not None:
                         for asset_name, w_val in zip(valid_assets_in_window, w_active):
                             idx = selected_assets.index(asset_name)
                             current_weights[idx] = w_val
-                            
                 except:
-                    # --- FALLBACK: INVERSE VOLATILITY (Not 1/N) ---
-                    # If solver fails, use Naive Risk Parity (1/Vol)
+                    # Fallback 1: Inverse Volatility
                     try:
-                        st.warning(f"Solver failed at {rebal_date.date()}. Using Inverse Volatility fallback.")
+                        st.warning(f"Solver failed at {rebal_date.date()}. Using Inverse Volatility.")
                         vols = est_window_clean.std()
                         inv_vols = 1.0 / vols
                         w_active = inv_vols / inv_vols.sum()
-                        
                         for asset_name, w_val in zip(valid_assets_in_window, w_active.values):
                             idx = selected_assets.index(asset_name)
                             current_weights[idx] = w_val
                     except:
-                         # Extreme failure: use previous weights if valid, else 0
+                         # Fallback 2: Hold previous or cash
                          if np.sum(previous_weights) > 0.9:
                              current_weights = previous_weights
-            else:
-                # No assets valid yet (e.g. pre-IPO period for all)
-                current_weights = np.zeros(n)
 
-            # --- TRANSACTION COSTS ---
+            # Transaction Costs
             if not tx_cost_data.empty:
                 try:
                     if not tx_cost_data.index.is_monotonic_increasing:
@@ -319,13 +301,11 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                 country_exp[c] = country_exp.get(c, 0) + w
             country_exposure_over_time[rebal_date] = country_exp
 
-            # --- RETURNS CALCULATION ---
             if j == len(rebalance_indices) - 1:
                 end_slice = len(period_dates)
             else:
                 end_slice = rebalance_indices[j+1]
                 
-            # Get returns, filling missing assets (pre-IPO) with 0
             sub_ret = period_returns.iloc[reb_idx:end_slice].fillna(0.0)
             if not sub_ret.empty:
                 period_port_ret = sub_ret.values @ current_weights
@@ -347,24 +327,39 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         cum_port_excess = (1 + port_excess_returns).cumprod()
         max_drawdown = compute_max_drawdown(cum_port_excess)
 
-        # Safe Risk Contribution Calculation
+        # --- FIX FOR RISK CONTRIBUTIONS ---
+        # Re-calculate RC using the final portfolio state and final covariance
+        rc_pct = np.zeros(n)
         try:
-            if last_cov is not None:
-                # This only works if the asset universe didn't change in the very last step
-                # Simplification: We assume the last valid cov applies to non-zero weight assets
-                active_indices = [i for i, w in enumerate(current_weights) if w > 1e-4]
-                if len(active_indices) > 0:
-                    # Re-extract small cov for final active assets
-                    # (Note: This is an approximation for display if dimensions mismatch)
-                    rc_pct = np.zeros(n) 
-                    # Ideally we store the last used sub-cov. 
-                    # For UI stability, we skip if complex mismatch.
-                else:
-                    rc_pct = np.zeros(n)
-            else:
-                rc_pct = np.zeros(n)
+            # 1. Find which assets are active in the final portfolio
+            active_indices = [i for i, w in enumerate(current_weights) if w > 1e-5]
+            active_assets = [selected_assets[i] for i in active_indices]
+            active_weights = current_weights[active_indices]
+            
+            if len(active_assets) > 0:
+                # 2. Get the final lookback window for THESE active assets
+                last_rebal_date = rebalance_indices[-1]
+                global_reb_pos = full_returns.index.get_loc(period_dates[last_rebal_date])
+                start_pos = max(0, global_reb_pos - lookback_months)
+                final_window = full_returns.iloc[start_pos:global_reb_pos][active_assets].dropna(how='any')
+                
+                if final_window.shape[0] > 10: # Ensure we have data
+                    lw = LedoitWolf().fit(final_window.values)
+                    final_cov = lw.covariance_ * ann_factor
+                    
+                    # 3. Standard RC Calculation
+                    port_var = active_weights @ final_cov @ active_weights
+                    sigma_p = np.sqrt(port_var)
+                    mrc = final_cov @ active_weights
+                    rc_abs = active_weights * mrc / sigma_p
+                    
+                    # 4. Normalize and Map back to full array
+                    if np.sum(rc_abs) > 0:
+                        rc_sub_pct = (rc_abs / np.sum(rc_abs)) * 100
+                        for i, val in zip(active_indices, rc_sub_pct):
+                            rc_pct[i] = val
         except:
-            rc_pct = np.zeros(n)
+            pass # Keep 0s if calculation fails (safe fallback)
 
         return {
             "selected_assets": selected_assets,
