@@ -54,43 +54,51 @@ st.markdown(
     
     /* --- FIXED BANNER HEADER --- */
     header {{
+        position: fixed !important;              /* Force it to stay at the top */
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
         background-image: url("data:image/jpg;base64,{banner_base64}") !important;
         background-size: cover !important;       
         background-position: center 45% !important; 
         background-repeat: no-repeat !important;
         height: 8rem !important;                 
-        z-index: 1001 !important; /* High z-index to stay on top */
+        z-index: 1001 !important;                /* Highest layer */
         background-color: #FFFFFF !important;
         border-bottom: 1px solid #ccc;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }}
     
     /* Hide decoration line */
     header .decoration {{ display: none; }}
     
-    /* Push main content down */
+    /* Push main content down to clear the fixed header */
     .block-container {{
-        padding-top: 9rem !important; 
+        padding-top: 9rem !important; /* 8rem header + 1rem gap */
         padding-bottom: 1rem !important;
     }}
     
     /* --- STICKY TABS FIX --- */
-    /* 1. Allow overflow so sticky works */
-    .stApp, .main, [data-testid="stVerticalBlock"] {{
-        overflow: visible !important;
+    /* 1. Target the Tab List Container */
+    .stTabs [data-baseweb="tab-list"] {{
+        position: sticky !important;
+        position: -webkit-sticky !important;
+        top: 8rem !important;        /* Dock exactly below the 8rem header */
+        z-index: 1000 !important;    /* Float above charts (default z is usually 0-1) */
+        background-color: {LIGHT_BG} !important; /* Solid bg to hide scrolling content */
+        padding-top: 10px;
+        padding-bottom: 10px;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #E0E0E0;
+        box-shadow: 0 4px 6px -4px rgba(0,0,0,0.1); /* Subtle shadow for depth */
     }}
     
-    /* 2. Make the tabs stick to the banner */
-    div[data-baseweb="tab-list"] {{
-        position: -webkit-sticky !important;
-        position: sticky !important;
-        top: 8rem !important; /* Matches banner height */
-        z-index: 1000 !important; /* Below banner (1001) but above content */
-        background-color: {LIGHT_BG} !important;
-        padding-top: 10px;
-        padding-bottom: 0px;
-        box-shadow: 0 4px 6px -4px rgba(0,0,0,0.1);
+    /* 2. Ensure Parent Containers Allow Sticky (Critical for Streamlit) */
+    [data-testid="stAppViewContainer"] {{
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
     }}
-
+    
     /* Tab Styling */
     div[data-baseweb="tab-highlight"] {{
         background-color: {TAB_UNDERLINE} !important;
@@ -141,6 +149,7 @@ st.markdown(
         iframe, 
         .vfrc-widget--chat,
         header, 
+        /* Hide the Sticky Tabs themselves in PDF (optional, usually looks cleaner without) */
         div[data-baseweb="tab-list"] {{
             display: none !important;
         }}
@@ -152,7 +161,6 @@ st.markdown(
         .stApp {{
             background-color: white !important;
         }}
-        /* Ensure charts print clearly */
         .js-plotly-plot {{
             break-inside: avoid;
         }}
@@ -162,7 +170,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- LOGO OVERLAY ---
+# --- LOGO OVERLAY (FIXED TOP CENTER) ---
 if logo_base64:
     st.markdown(
         f"""
@@ -171,7 +179,7 @@ if logo_base64:
             top: 1.5rem; 
             left: 50%;
             transform: translateX(-50%);
-            z-index: 1002; /* Above everything */
+            z-index: 1002; /* Above Header (1001) */
             width: 100%;
             text-align: center;
             pointer-events: none;
@@ -308,7 +316,7 @@ def compute_max_drawdown(cumulative_returns):
     return drawdowns.min() * 100
 
 @st.cache_data(show_spinner=True)
-def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=7):
+def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=8):
     custom_data = _custom_data 
     rf_data = _rf_data
     tx_cost_data = _tx_cost_data
@@ -376,7 +384,6 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                         current_weights[idx] = w_val
                         current_rc[idx] = rc_val
                 except:
-                    # Inverse Volatility Fallback
                     try:
                         vols = est_window_clean.std()
                         inv_vols = 1.0 / vols
@@ -478,7 +485,7 @@ def plot_cumulative_performance(results):
     min_val, max_val = cum_series.min(), cum_series.max()
     if min_val > 0 and max_val > 0:
         log_min, log_max = np.log10(min_val), np.log10(max_val)
-        raw_dtick = (log_max - log_min) / 3
+        raw_dtick = (log_max - log_min) / 2.5
         magnitude = 10 ** np.floor(np.log10(raw_dtick))
         normalized = raw_dtick / magnitude
         if normalized < 1.5: nice_dtick = 1.0 * magnitude
@@ -598,7 +605,7 @@ with tab2:
         
         st.divider()
         
-        # --- NEW BROWSER PRINT BUTTON ---
+        # --- BROWSER PRINT BUTTON (Cleanest PDF) ---
         components.html(
             """
             <script>
@@ -628,8 +635,14 @@ with tab2:
 
 with tab3:
     st.title("About Us")
-    # ... (Keep existing team content) ...
-    st.write("Pension Fund Optimizer Team.")
+    st.write("""
+    Welcome to the Pension Fund Optimizer!
+    We are a dedicated team of financial experts and developers passionate about helping individuals and institutions optimize their pension funds for maximum efficiency and risk management.
+    Our tool uses advanced optimization techniques, specifically Dynamic Equal Risk Contribution (ERC) with annual rebalancing, to create balanced portfolios that aim to equalize the risk contributions from each asset over time.
+    Built with Streamlit and powered by open-source libraries, this app provides an intuitive interface for selecting assets, analyzing historical data, and visualizing results.
+    If you have any questions or feedback, feel free to reach out at support@pensionoptimizer.com.
+    Thank you for using our tool! 🎉
+    """)
     st.markdown("---")
     st.markdown("## 👥 Meet the Team")
     st.markdown("<br>", unsafe_allow_html=True)
