@@ -40,6 +40,12 @@ st.markdown(
         color: {TEXT_COLOR};
         font-family: 'Times New Roman', serif;
     }}
+
+    /* --- CRITICAL FIX: Reduce Top Whitespace --- */
+    .block-container {{
+        padding-top: 1rem !important; /* Pulls content up */
+        padding-bottom: 1rem !important;
+    }}
     
     /* Sidebar Background */
     .stSidebar {{
@@ -141,11 +147,11 @@ try:
             justify-content: center; 
             align-items: center; 
             width: 100%; 
-            padding-top: 10px; 
-            padding-bottom: 30px;
+            padding-top: 0px;  /* Reduced from 10px to 0 */
+            padding-bottom: 20px;
         ">
             <img src="data:image/png;base64,{img_base64}" 
-                 style="max-width: 350px; width: 100%; height: auto;">
+                 style="max-width: 350px; width: 100%; height: auto; border-radius: 15px;">
         </div>
         """,
         unsafe_allow_html=True
