@@ -22,6 +22,7 @@ BUTTON_TEXT = "#000000"     # Black Text
 LIGHT_BG = "#FFFFFF"        # Main Background
 SIDEBAR_BG = "#F5F5F5"      # Light Grey Sidebar
 TEXT_COLOR = "#000000"      # Black Text
+TAB_UNDERLINE = "#999999"   # Grey for the tab highlight
 
 st.markdown(
     f"""
@@ -41,18 +42,6 @@ st.markdown(
         font-family: 'Times New Roman', serif;
     }}
     
-    /* --- FIX: Make Native Header Transparent so Logo shows through --- */
-    header {{
-        background-color: transparent !important;
-        z-index: 1 !important; /* Lower than the logo */
-    }}
-    
-    /* Reduce top white space */
-    .block-container {{
-        padding-top: 2rem !important; 
-        padding-bottom: 1rem !important;
-    }}
-    
     /* Sidebar Background */
     .stSidebar {{
         background-color: {SIDEBAR_BG};
@@ -60,6 +49,15 @@ st.markdown(
     section[data-testid="stSidebar"] {{
         background-color: {SIDEBAR_BG};
         color: {TEXT_COLOR};
+    }}
+
+    /* --- TAB UNDERLINE FIX (Remove Red) --- */
+    div[data-baseweb="tab-highlight"] {{
+        background-color: {TAB_UNDERLINE} !important;
+    }}
+    /* Optional: Change the tiny border at the bottom of the tabs container */
+    div[data-baseweb="tab-list"] {{
+        border-bottom-color: #E0E0E0 !important;
     }}
 
     /* --- BUTTONS (Optimize) --- */
@@ -146,7 +144,6 @@ try:
     img_base64 = get_base64_of_bin_file("ERC Portfolio.png")
     
     # Inject HTML Div at the top of the main container
-    # FIX: Added z-index and relative positioning to force it above the native header
     st.markdown(
         f"""
         <div style="
@@ -154,10 +151,8 @@ try:
             justify-content: center; 
             align-items: center; 
             width: 100%; 
-            position: relative; 
-            z-index: 999999;  /* Forces logo above Streamlit UI */
-            margin-top: -30px; /* Pulls it up into the empty header space */
-            padding-bottom: 20px;
+            padding-top: 10px; 
+            padding-bottom: 30px;
         ">
             <img src="data:image/png;base64,{img_base64}" 
                  style="max-width: 350px; width: 100%; height: auto; border-radius: 15px;">
@@ -167,6 +162,7 @@ try:
     )
 except Exception as e:
     st.warning(f"Logo not found: {e}")
+
 # --- DATA LOADING FUNCTIONS ---
 
 @st.cache_data
