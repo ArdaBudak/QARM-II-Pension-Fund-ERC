@@ -413,55 +413,39 @@ with tab0:
     st.title("How to Use")
     # Removed text instructions as requested
     
-   # --- CHATBOT INTEGRATION ---
-components.html(
-    """
-    <style>
-        /* 1. Make the iframe background black */
-        body { 
-            background-color: #000000; 
-            margin: 0; 
-            padding: 0;
-        }
-        /* 2. Force the Voiceflow widget to have a black background */
-        /* Note: Voiceflow loads its own styles, so we use !important to override */
-        .vfrc-widget--chat {
-            background-color: #000000 !important;
-        }
-        .vfrc-header {
-            background-color: #111111 !important;
-            color: #f0f0f0 !important;
-        }
-        .vfrc-system-response .vfrc-system-response__content {
-             background-color: #222222 !important;
-             color: #f0f0f0 !important;
-        }
-    </style>
-    <script type="text/javascript">
-      (function(d, t) {
-          var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
-          v.onload = function() {
-            window.voiceflow.chat.load({
-              verify: { projectID: '69283f7c489631e28656d2c1' },
-              url: 'https://general-runtime.voiceflow.com',
-              versionID: 'production',
-              render: {
-                  mode: 'embedded',
-                  target: document.body
-              },
-              autostart: true
-              // Voice section removed here to disable TTS
-            });
-          }
-          v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs";
-          v.type = "text/javascript";
-          s.parentNode.insertBefore(v, s);
-      })(document, 'script');
-    </script>
-    """,
-    height=600, 
-    scrolling=False
-)
+    # --- EMBEDDED CHATBOT (Visible, Non-Floating) ---
+    components.html(
+        """
+        <style>
+            body { margin: 0; padding: 0; }
+        </style>
+        <script type="text/javascript">
+          (function(d, t) {
+              var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
+              v.onload = function() {
+                window.voiceflow.chat.load({
+                  verify: { projectID: '69283f7c489631e28656d2c1' },
+                  url: 'https://general-runtime.voiceflow.com',
+                  versionID: 'production',
+                  render: {
+                      mode: 'embedded',
+                      target: document.body
+                  },
+                  autostart: true,
+                  voice: {
+                    url: "https://runtime-api.voiceflow.com"
+                  }
+                });
+              }
+              v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs";
+              v.type = "text/javascript";
+              s.parentNode.insertBefore(v, s);
+          })(document, 'script');
+        </script>
+        """,
+        height=600, # Height of the visible chat window
+        scrolling=False
+    )
 
 with tab1:
     st.title("Asset Selection")
