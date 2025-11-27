@@ -6,7 +6,6 @@ import plotly.express as px
 import cvxpy as cp
 import streamlit.components.v1 as components
 import base64
-from fpdf import FPDF
 from scipy.optimize import minimize_scalar
 from datetime import datetime, timedelta
 from pandas.tseries.offsets import MonthEnd
@@ -53,9 +52,9 @@ st.markdown(
         font-family: 'Times New Roman', serif;
     }}
     
-    /* --- CUSTOM BANNER HEADER (Scrolls Away) --- */
+    /* --- FIXED BANNER HEADER --- */
     header {{
-        position: absolute !important;  /* Absolute means it scrolls with the page */
+        position: absolute !important;
         top: 0 !important;
         left: 0 !important;
         right: 0 !important;
@@ -64,39 +63,37 @@ st.markdown(
         background-position: center 45% !important; 
         background-repeat: no-repeat !important;
         height: 8rem !important;                 
-        z-index: 100 !important;
+        z-index: 1001 !important;
         background-color: #FFFFFF !important;
         border-bottom: 1px solid #ccc;
     }}
     
-    /* Hide Streamlit's decoration bar */
     header .decoration {{ display: none; }}
     
-    /* Push content down to accommodate banner */
+    /* Push content down */
     .block-container {{
-        padding-top: 8rem !important; 
+        padding-top: 9rem !important; 
         padding-bottom: 1rem !important;
     }}
     
     /* --- ROBUST STICKY TABS --- */
-    /* 1. We target the tab list container. 
-       2. We set top: 0 so it sticks to the very top of the window once the banner scrolls past.
-       3. We give it a high z-index and white background so content slides BEHIND it.
-    */
+    [data-testid="stAppViewContainer"] {{
+        overflow-x: hidden;
+        overflow-y: auto;
+    }}
+    
     div[data-baseweb="tab-list"] {{
-        position: sticky !important;
         position: -webkit-sticky !important;
-        top: 0px !important; 
-        z-index: 99999 !important; 
-        background-color: {LIGHT_BG} !important; 
-        padding-top: 10px;
-        padding-bottom: 0px;
-        margin-top: 0px;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 999 !important;
+        background-color: {LIGHT_BG} !important;
+        padding-top: 1rem;
+        padding-bottom: 0.5rem;
         border-bottom: 1px solid #E0E0E0;
-        box-shadow: 0 4px 6px -4px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 4px -2px rgba(0,0,0,0.05);
     }}
 
-    /* Tab Highlight Color */
     div[data-baseweb="tab-highlight"] {{
         background-color: {TAB_UNDERLINE} !important;
     }}
@@ -105,11 +102,9 @@ st.markdown(
         font-weight: bold !important;
     }}
 
-    /* Sidebar */
     .stSidebar {{ background-color: {SIDEBAR_BG}; }}
     section[data-testid="stSidebar"] {{ background-color: {SIDEBAR_BG}; color: {TEXT_COLOR}; }}
 
-    /* Buttons */
     .stButton>button {{ 
         background-color: {BUTTON_COLOR}; 
         color: {BUTTON_TEXT}; 
@@ -125,20 +120,17 @@ st.markdown(
         border-color: #999999;
     }}
 
-    /* Tags */
     span[data-baseweb="tag"] {{
         background-color: #E8E8E8 !important;
         color: {TEXT_COLOR} !important;
         border: 1px solid #d0d0d0;
     }}
 
-    /* Typography */
     h1, h2, h3, h4, h5, h6, .stHeader, p, label, span, div {{ 
         color: {TEXT_COLOR} !important; 
         font-family: 'Times New Roman', serif; 
     }}
     
-    /* --- PRINT STYLES --- */
     @media print {{
         section[data-testid="stSidebar"], 
         .stButton, 
@@ -164,16 +156,15 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- LOGO OVERLAY (SCROLLS WITH PAGE) ---
 if logo_base64:
     st.markdown(
         f"""
         <div style="
-            position: absolute; /* Scrolls with page */
+            position: absolute;
             top: 1.5rem; 
             left: 50%;
             transform: translateX(-50%);
-            z-index: 1002; /* Above Banner */
+            z-index: 1002; 
             width: 100%;
             text-align: center;
             pointer-events: none;
@@ -285,13 +276,14 @@ def compute_rebalance_indices(dates, freq_label):
         idxs.append(n - 1)
     return idxs
 
-# --- OPTIMIZATION (RIGOROUS) ---
+# --- OPTIMIZATION (RIGOROUS MATH RESTORED) ---
 
 def solve_erc_weights(cov_matrix):
     n = cov_matrix.shape[0]
     
     def solve_with_rho(rho):
         w = cp.Variable(n)
+        # Log-Barrier Objective: min 0.5*w'Sw - rho*sum(log(w))
         objective = cp.Minimize(cp.quad_form(w, cov_matrix) - rho * cp.sum(cp.log(w)))
         constraints = [cp.sum(w) == 1, w >= 1e-6]
         prob = cp.Problem(objective, constraints)
@@ -314,11 +306,14 @@ def solve_erc_weights(cov_matrix):
         if sigma <= 0: return np.inf
         mrc = cov_matrix @ w
         rc = w * mrc / sigma
+        # Target: All RC should be equal. Minimize Variance(RC).
         return np.var(rc)
 
     try:
+        # Numerical search for optimal Rho (Diversity Factor)
         res = minimize_scalar(rc_variance, bounds=(1e-6, 1e-1), method="bounded", tol=1e-5)
         w_star = solve_with_rho(res.x)
+        
         if w_star is None: raise RuntimeError("ERC Solver Failed")
         w_star = np.where(np.abs(w_star) < 1e-6, 0, w_star)
         w_star /= w_star.sum()
@@ -332,7 +327,7 @@ def compute_max_drawdown(cumulative_returns):
     return drawdowns.min() * 100
 
 @st.cache_data(show_spinner=True)
-def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=13):
+def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=10):
     custom_data = _custom_data 
     rf_data = _rf_data
     tx_cost_data = _tx_cost_data
@@ -400,6 +395,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                         current_weights[idx] = w_val
                         current_rc[idx] = rc_val
                 except:
+                    # Inverse Volatility Fallback
                     try:
                         vols = est_window_clean.std()
                         inv_vols = 1.0 / vols
@@ -497,6 +493,7 @@ def plot_cumulative_performance(results):
     if not cum_bench.empty:
         fig.add_trace(go.Scatter(x=cum_bench.index, y=cum_bench.values, mode="lines", name="S&P 500 (Excess)", line=dict(color="#333333", width=2, dash="dash")))
     
+    # Log Scale
     min_val, max_val = cum_series.min(), cum_series.max()
     if min_val > 0 and max_val > 0:
         log_min, log_max = np.log10(min_val), np.log10(max_val)
