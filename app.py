@@ -282,23 +282,48 @@ def compute_rebalance_indices(dates, freq_label):
 # --- OPTIMIZATION (RIGOROUS MATH RESTORED) ---
 
 def solve_erc_weights(cov_matrix):
+    """
+    Solves for ERC weights using the Convex Reformulation (Maillard et al., 2010).
+    Optimized for CLARABEL solver.
+    """
     n = cov_matrix.shape[0]
     
-    def solve_with_rho(rho):
-        w = cp.Variable(n)
-        # Log-Barrier Objective: min 0.5*w'Sw - rho*sum(log(w))
-        objective = cp.Minimize(cp.quad_form(w, cov_matrix) - rho * cp.sum(cp.log(w)))
-        constraints = [cp.sum(w) == 1, w >= 1e-6]
-        prob = cp.Problem(objective, constraints)
-        try:
-            prob.solve(solver=cp.CLARABEL)
-        except:
-            try:
-                prob.solve(solver=cp.SCS)
-            except:
-                prob.solve(solver=cp.ECOS)
-        if prob.status == "optimal":
-            return np.array(w.value).flatten()
+    # Optimization Variable (y)
+    y = cp.Variable(n)
+    
+    # Objective: Minimize Risk (Quadratic) - Log Barrier (Exponential Cone)
+    # 0.5 * y.T * S * y - sum(log(y))
+    objective = cp.Minimize(0.5 * cp.quad_form(y, cov_matrix) - cp.sum(cp.log(y)))
+    
+    # Constraints: y must be strictly positive (log barrier handles this, 
+    # but explicit constraint helps solver convergence)
+    constraints = [y >= 1e-8] 
+    
+    prob = cp.Problem(objective, constraints)
+    
+    try:
+        # Use CLARABEL. 
+        # 'tol_gap_abs' and 'tol_gap_rel' control precision. 
+        # Default is usually fine, but you can tighten them for finance.
+        prob.solve(solver=cp.CLARABEL, verbose=False)
+        
+        # Check status
+        if prob.status not in ["optimal", "optimal_inaccurate"]:
+            # Fallback to SCS if the interior point method fails (rare)
+            prob.solve(solver=cp.SCS, verbose=False)
+
+        if prob.value is None or y.value is None:
+            return None
+
+        # Recover weights: w = y / sum(y)
+        y_val = np.array(y.value).flatten()
+        w_star = y_val / np.sum(y_val)
+        
+        return w_star
+
+    except Exception as e:
+        # Log the error if needed
+        # st.write(f"Solver Error: {e}")
         return None
 
     def rc_variance(rho):
