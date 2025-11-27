@@ -22,7 +22,20 @@ BUTTON_TEXT = "#000000"     # Black Text
 LIGHT_BG = "#FFFFFF"        # Main Background
 SIDEBAR_BG = "#F5F5F5"      # Light Grey Sidebar
 TEXT_COLOR = "#000000"      # Black Text
-TAB_UNDERLINE = "#E0E0E0"   # Light Grey for Tab Highlight
+TAB_UNDERLINE = "#999999"   # Darker Grey for Tab Highlight (Updated)
+
+# --- IMAGE ENCODING HELPERS ---
+def get_base64_of_bin_file(bin_file):
+    try:
+        with open(bin_file, 'rb') as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except:
+        return ""
+
+# Encode images for CSS injection
+banner_base64 = get_base64_of_bin_file("Gray-Manhattan-Morning-Wallpaper-Mural.jpg")
+logo_base64 = get_base64_of_bin_file("ERC Portfolio.png")
 
 st.markdown(
     f"""
@@ -42,16 +55,20 @@ st.markdown(
         font-family: 'Times New Roman', serif;
     }}
     
-    /* --- FIX: Make Native Header Transparent so Logo shows through --- */
+    /* --- CUSTOM BANNER HEADER --- */
+    /* This targets the top fixed header bar in Streamlit */
     header {{
-        background-color: transparent !important;
-        z-index: 1 !important; /* Lower than the logo */
+        background-image: url("data:image/jpg;base64,{banner_base64}") !important;
+        background-size: cover !important;       /* Scale image to fill width */
+        background-position: center 45% !important; /* Focus on the middle vertical slice */
+        background-repeat: no-repeat !important;
+        height: 8rem !important;                 /* Set fixed height for the banner */
+        z-index: 1 !important;
     }}
     
-    /* --- REDUCED UPPER BAR SIZE --- */
-    /* Pulls the main content up closer to the top */
+    /* Push content down to reveal the banner */
     .block-container {{
-        padding-top: 4rem !important; 
+        padding-top: 6rem !important; /* Updated to 6rem per request */
         padding-bottom: 1rem !important;
     }}
     
@@ -64,12 +81,12 @@ st.markdown(
         color: {TEXT_COLOR};
     }}
 
-    /* --- TAB UNDERLINE FIX (Light Grey) --- */
+    /* --- TAB UNDERLINE FIX --- */
     div[data-baseweb="tab-highlight"] {{
         background-color: {TAB_UNDERLINE} !important;
     }}
     div[data-baseweb="tab-list"] {{
-        border-bottom-color: #999999 !important;
+        border-bottom-color: #E0E0E0 !important;
     }}
 
     /* --- BUTTONS (Optimize) --- */
@@ -146,39 +163,28 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- LOGO HANDLING (TOP CENTER BANNER) ---
-def get_base64_of_bin_file(bin_file):
-    with open(bin_file, 'rb') as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
-
-try:
-    img_base64 = get_base64_of_bin_file("ERC Portfolio.png")
-    
-    # Inject HTML Div at the top of the main container
-    # z-index: 999999 forces it above everything
-    # margin-top: -30px pulls it up into the space we cleared
-    # border-radius: 15px adds the smooth corners
+# --- LOGO HANDLING (OVERLAY ON BANNER) ---
+if logo_base64:
     st.markdown(
         f"""
         <div style="
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            width: 100%; 
-            position: relative; 
-            z-index: 999999;  
-            margin-top: -30px; 
-            padding-bottom: 20px;
+            position: fixed;
+            top: 1.5rem; /* Position relative to top of window */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 999999; /* Keep above the banner background */
+            width: 100%;
+            text-align: center;
+            pointer-events: none; /* Allow clicking through if needed */
         ">
-            <img src="data:image/png;base64,{img_base64}" 
-                 style="max-width: 350px; width: 100%; height: auto; border-radius: 15px;">
+            <img src="data:image/png;base64,{logo_base64}" 
+                 style="max-width: 300px; width: 80%; height: auto; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
         </div>
         """,
         unsafe_allow_html=True
     )
-except Exception as e:
-    st.warning(f"Logo not found: {e}")
+else:
+    st.warning("Logo not found.")
 
 # --- DATA LOADING FUNCTIONS ---
 
@@ -336,7 +342,7 @@ def compute_max_drawdown(cumulative_returns):
     return drawdowns.min() * 100
 
 @st.cache_data(show_spinner=True)
-def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=5):
+def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=6):
     custom_data = _custom_data 
     rf_data = _rf_data
     tx_cost_data = _tx_cost_data
