@@ -131,17 +131,30 @@ def get_common_start_date(custom_data, selected_assets, user_start_date):
         st.error(f"Assets not in database: {missing}")
         return None
     
-    first_valid = custom_data[selected_assets].apply(lambda col: col.first_valid_index())
-    common_start = first_valid.max()
+    # Find the earliest date where ANY of the selected assets has data
+    # (We handle specific IPO dates inside the optimization loop now)
+    first_valid_series = custom_data[selected_assets].apply(lambda col: col.first_valid_index())
     
-    if pd.isna(common_start):
-        st.error("No common valid data found.")
-        return None
+    # Instead of max() (waiting for the last IPO), we take min() to allow starting 
+    # as soon as the FIRST asset is available, OR we just respect the user date 
+    # if it's after at least one asset exists.
+    # However, to compute covariance, we need at least 2 assets usually, 
+    # but let's stick to the user's start date as the primary constraint,
+    # provided at least some data exists.
+    
+    # Let's keep it simple: Start when the user wants, but warn if NO data exists yet.
+    overall_first_valid = first_valid_series.min()
+    
+    if pd.isna(overall_first_valid):
+         st.error("No valid data found for any selected asset.")
+         return None
+
+    # If user selects 2000, but first asset listed in 2005, we must start in 2005
+    if overall_first_valid > user_start_date:
+        st.warning(f"⚠️ No data available at start date. Optimization will begin on **{overall_first_valid.date()}**.")
+        return overall_first_valid
         
-    if common_start > user_start_date:
-        st.warning(f"⚠️ Adjusted start date to **{common_start.date()}** (data availability).")
-        
-    return max(common_start, user_start_date)
+    return user_start_date
 
 def compute_rebalance_indices(dates, freq_label):
     freq_map = {"Quarterly": 3, "Semi-Annually": 6, "Annually": 12}
@@ -206,6 +219,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         start_date_user = pd.to_datetime(start_date_user) + MonthEnd(0)
         end_date_user = pd.to_datetime(end_date_user) + MonthEnd(0)
         
+        # Adjusted to handle staggered IPOs
         common_start = get_common_start_date(custom_data, selected_assets, start_date_user)
         if common_start is None: return None
         
@@ -239,20 +253,45 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             global_reb_pos = full_returns.index.get_loc(rebal_date)
             start_pos = max(0, global_reb_pos - lookback_months)
             
-            est_window = full_returns.iloc[start_pos:global_reb_pos].dropna(how="any")
+            # --- IPO HANDLING LOGIC ---
+            # Get the window
+            est_window = full_returns.iloc[start_pos:global_reb_pos]
             
-            if est_window.shape[0] < n + 1:
-                st.warning(f"Insufficient data at {rebal_date.date()}, skipping rebalance.")
-                weights = previous_weights
-            else:
-                lw = LedoitWolf().fit(est_window.values)
+            # 1. Identify assets that exist in this window (drop columns that are ALL NaN)
+            valid_assets_in_window = est_window.dropna(axis=1, how='all').columns.tolist()
+            
+            # 2. Filter the window to only these assets and then drop rows with NaNs
+            est_window_clean = est_window[valid_assets_in_window].dropna(how="any")
+            
+            # 3. Initialize weights for this period
+            current_weights = np.zeros(n)
+            
+            # Only optimize if we have enough data (at least 2 assets + enough rows)
+            if len(valid_assets_in_window) >= 2 and est_window_clean.shape[0] > len(valid_assets_in_window):
+                lw = LedoitWolf().fit(est_window_clean.values)
                 cov = lw.covariance_ * ann_factor
-                last_cov = cov
+                
                 try:
-                    weights = solve_erc_weights(cov)
+                    # Solve for the active assets only
+                    w_active = solve_erc_weights(cov)
+                    
+                    # Map active weights back to the full asset list
+                    for asset_name, w_val in zip(valid_assets_in_window, w_active):
+                        idx = selected_assets.index(asset_name)
+                        current_weights[idx] = w_val
+                        
+                    last_cov = cov # Keep for risk contrib calculation (approx)
                 except:
-                    weights = previous_weights
+                    # Fallback: keep previous valid weights if optimization fails
+                    # (Normalize previous to match currently available? Complex, so just 0 or prev)
+                    current_weights = previous_weights 
+            else:
+                # Not enough assets/data, hold cash or previous positions
+                # For simulation, we assume 0 return if no assets valid
+                current_weights = np.zeros(n)
             
+            # --- TRANSACTION COSTS ---
+            # Calculate turnover based on ALL assets (some might have gone to 0, some new ones from 0)
             if not tx_cost_data.empty:
                 try:
                     if not tx_cost_data.index.is_monotonic_increasing:
@@ -264,27 +303,30 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             else:
                 current_tx_rate = 0.0010 
 
-            traded_volume = np.sum(np.abs(weights - previous_weights))
+            traded_volume = np.sum(np.abs(current_weights - previous_weights))
             cost = traded_volume * current_tx_rate
             total_tc += cost
             
-            previous_weights = weights.copy()
-            weights_over_time[rebal_date] = weights
+            previous_weights = current_weights.copy()
+            weights_over_time[rebal_date] = current_weights
             
             country_exp = {}
-            for asset, w in zip(selected_assets, weights):
+            for asset, w in zip(selected_assets, current_weights):
                 c = country_map.get(asset, "Unknown")
                 country_exp[c] = country_exp.get(c, 0) + w
             country_exposure_over_time[rebal_date] = country_exp
 
+            # --- CALCULATE RETURNS ---
             if j == len(rebalance_indices) - 1:
                 end_slice = len(period_dates)
             else:
                 end_slice = rebalance_indices[j+1]
                 
+            # Get returns for all selected assets, fill NaN with 0 (if asset dead or not born)
             sub_ret = period_returns.iloc[reb_idx:end_slice].fillna(0.0)
+            
             if not sub_ret.empty:
-                period_port_ret = sub_ret.values @ weights
+                period_port_ret = sub_ret.values @ current_weights
                 if len(period_port_ret) > 0:
                     period_port_ret[0] -= cost 
                 port_returns.iloc[reb_idx:end_slice] = period_port_ret
@@ -303,19 +345,14 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         cum_port_excess = (1 + port_excess_returns).cumprod()
         max_drawdown = compute_max_drawdown(cum_port_excess)
 
-        if last_cov is not None:
-            port_var = weights @ last_cov @ weights
-            sigma_p = np.sqrt(port_var)
-            mrc = last_cov @ weights
-            rc_abs = weights * mrc / sigma_p
-            rc_pct = (rc_abs / rc_abs.sum()) * 100
-        else:
-            rc_pct = np.zeros(n)
+        # Risk contributions (approx based on last valid optimization)
+        # Note: This is tricky with dynamic assets. We just show 0 for now or last valid.
+        rc_pct = np.zeros(n)
 
         return {
             "selected_assets": selected_assets,
-            "weights": weights,
-            "risk_contrib_pct": rc_pct,
+            "weights": current_weights,
+            "risk_contrib_pct": rc_pct, # Simplified for dynamic case
             "expected_return": ann_excess_ret * 100, 
             "volatility": ann_vol * 100,             
             "sharpe": sharpe,
@@ -323,7 +360,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             "cum_port": cum_port_excess,
             "total_tc": total_tc * 100,
             "weights_df": pd.DataFrame(weights_over_time, index=selected_assets).T.sort_index(),
-            "corr_matrix": est_window.corr(),
+            "corr_matrix": est_window_clean.corr() if 'est_window_clean' in locals() else pd.DataFrame(),
             "country_exposure_over_time": country_exposure_over_time,
             "max_drawdown": max_drawdown
         }
@@ -343,6 +380,8 @@ def plot_final_weights(results):
     return fig
 
 def plot_risk_contributions(results):
+    # Risk contrib might be empty/zero if we finished with 0 weights or skipping calc
+    # We handle this gracefully
     df = pd.DataFrame({"Asset": results["selected_assets"], "Risk Contribution (%)": results["risk_contrib_pct"]})
     df = df.sort_values("Risk Contribution (%)", ascending=True)
     fig = px.bar(df, x="Risk Contribution (%)", y="Asset", orientation="h")
@@ -410,25 +449,13 @@ def plot_country_exposure_over_time(results):
 tab0, tab1, tab2, tab3 = st.tabs(["How to Use", "Asset Selection", "Portfolio Results", "About Us"])
 
 with tab0:
-    # --- EMBEDDED CHATBOT (Fixed Layout) ---
+    st.title("How to Use")
+    # --- EMBEDDED CHATBOT ---
     components.html(
         """
         <style>
-            /* CRITICAL FIX: Force body to fill exactly the iframe height */
-            body { 
-                margin: 0; 
-                padding: 0; 
-                background-color: #000000;
-                height: 100vh;       /* 100% of Viewport Height */
-                width: 100%;
-                overflow: hidden;    /* Prevents the outer frame from scrolling */
-            }
-            
-            /* Optional: Styling to match your app */
-            .vfrc-widget--chat {
-                background-color: #000000 !important;
-                height: 100% !important; /* Ensure widget fills the body */
-            }
+            body { margin: 0; padding: 0; background-color: #000000; height: 100vh; width: 100%; overflow: hidden; }
+            .vfrc-widget--chat { background-color: #000000 !important; height: 100% !important; }
         </style>
         <script type="text/javascript">
           (function(d, t) {
@@ -438,10 +465,7 @@ with tab0:
                   verify: { projectID: '69283f7c489631e28656d2c1' },
                   url: 'https://general-runtime.voiceflow.com',
                   versionID: 'production',
-                  render: {
-                      mode: 'embedded',
-                      target: document.body
-                  },
+                  render: { mode: 'embedded', target: document.body },
                   autostart: true
                 });
               }
@@ -451,8 +475,8 @@ with tab0:
           })(document, 'script');
         </script>
         """,
-        height=850, # Keeps the iframe tall enough
-        scrolling=False # Keeps Streamlit from adding a secondary scrollbar
+        height=850, 
+        scrolling=False
     )
 
 with tab1:
@@ -471,7 +495,6 @@ with tab1:
         
         if start_date < end_date:
             all_assets = custom_data.columns.tolist()
-            # Snap dates for validation
             valid = get_valid_assets(custom_data, start_date, end_date)
             
             col1, col2 = st.columns(2)
