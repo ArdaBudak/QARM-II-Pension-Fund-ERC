@@ -51,7 +51,7 @@ st.markdown(
     /* --- REDUCED UPPER BAR SIZE --- */
     /* Pulls the main content up closer to the top */
     .block-container {{
-        padding-top: 1rem !important; 
+        padding-top: 12rem !important; 
         padding-bottom: 1rem !important;
     }}
     
@@ -69,7 +69,7 @@ st.markdown(
         background-color: {TAB_UNDERLINE} !important;
     }}
     div[data-baseweb="tab-list"] {{
-        border-bottom-color: #E0E0E0 !important;
+        border-bottom-color: #999999 !important;
     }}
 
     /* --- BUTTONS (Optimize) --- */
