@@ -747,7 +747,7 @@ if st.button("Generate PDF Report"):
         except Exception as e:
             st.error(f"PDF Generation Error: {e}")
             st.warning("Ensure 'kaleido==0.2.1' and 'fpdf2' are installed.")
-    else: st.info("Run optimization first.")
+    
 
 with tab3:
     st.title("About Us")
