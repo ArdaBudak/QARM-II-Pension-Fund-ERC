@@ -7,5 +7,6 @@ scipy
 ecos
 fpdf
 scikit-learn
-kaleido
+fpdf2
+kaleido==0.2.1
 
