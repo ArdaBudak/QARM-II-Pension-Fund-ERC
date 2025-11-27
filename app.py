@@ -33,10 +33,6 @@ st.markdown(
         --text-color: {TEXT_COLOR};
         --font: 'Times New Roman', serif;
     }}
-    /* --- TAB UNDERLINE FIX --- */
-    /* Change the red bar to Light Grey */
-    div[data-baseweb="tab-highlight"] {
-        background-color: #E0E0E0 !important;
     }
     
     /* Optional: Change the bottom border line of the tab container */
