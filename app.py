@@ -22,6 +22,7 @@ BUTTON_TEXT = "#000000"     # Black Text
 LIGHT_BG = "#FFFFFF"        # Main Background
 SIDEBAR_BG = "#F5F5F5"      # Light Grey Sidebar
 TEXT_COLOR = "#000000"      # Black Text
+TAB_UNDERLINE = "#E0E0E0"   # Light Grey for Tab Highlight
 
 st.markdown(
     f"""
@@ -47,9 +48,10 @@ st.markdown(
         z-index: 1 !important; /* Lower than the logo */
     }}
     
-    /* Reduce top white space */
+    /* --- REDUCED UPPER BAR SIZE --- */
+    /* Pulls the main content up closer to the top */
     .block-container {{
-        padding-top: 2rem !important; 
+        padding-top: 1rem !important; 
         padding-bottom: 1rem !important;
     }}
     
@@ -60,6 +62,14 @@ st.markdown(
     section[data-testid="stSidebar"] {{
         background-color: {SIDEBAR_BG};
         color: {TEXT_COLOR};
+    }}
+
+    /* --- TAB UNDERLINE FIX (Light Grey) --- */
+    div[data-baseweb="tab-highlight"] {{
+        background-color: {TAB_UNDERLINE} !important;
+    }}
+    div[data-baseweb="tab-list"] {{
+        border-bottom-color: #E0E0E0 !important;
     }}
 
     /* --- BUTTONS (Optimize) --- */
@@ -146,7 +156,9 @@ try:
     img_base64 = get_base64_of_bin_file("ERC Portfolio.png")
     
     # Inject HTML Div at the top of the main container
-    # FIX: Added z-index and relative positioning to force it above the native header
+    # z-index: 999999 forces it above everything
+    # margin-top: -30px pulls it up into the space we cleared
+    # border-radius: 15px adds the smooth corners
     st.markdown(
         f"""
         <div style="
@@ -155,8 +167,8 @@ try:
             align-items: center; 
             width: 100%; 
             position: relative; 
-            z-index: 999999;  /* Forces logo above Streamlit UI */
-            margin-top: -30px; /* Pulls it up into the empty header space */
+            z-index: 999999;  
+            margin-top: -30px; 
             padding-bottom: 20px;
         ">
             <img src="data:image/png;base64,{img_base64}" 
@@ -167,6 +179,7 @@ try:
     )
 except Exception as e:
     st.warning(f"Logo not found: {e}")
+
 # --- DATA LOADING FUNCTIONS ---
 
 @st.cache_data
