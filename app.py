@@ -19,17 +19,18 @@ try:
 except:
     pass 
 
-# --- LIGHT THEME CONFIGURATION ---
-PRIMARY_PURPLE = "#5e6ad2"  # Chatbot Purple
+# --- MONOCHROME THEME CONFIGURATION ---
+PRIMARY_GREY = "#666666"    # Dark Grey for Buttons (Visible on white)
+LIGHT_GREY = "#E0E0E0"      # Light Grey for Tags
 LIGHT_BG = "#FFFFFF"        # Main Background
-SIDEBAR_BG = "#F5F5F5"      # Light Grey Banner
+SIDEBAR_BG = "#F5F5F5"      # Sidebar Background
 TEXT_COLOR = "#000000"      # Black Text
 
 st.markdown(
     f"""
     <style>
     :root {{
-        --primary-color: {PRIMARY_PURPLE};
+        --primary-color: {PRIMARY_GREY};
         --background-color: {LIGHT_BG};
         --secondary-background-color: {SIDEBAR_BG};
         --text-color: {TEXT_COLOR};
@@ -51,10 +52,18 @@ st.markdown(
         background-color: {SIDEBAR_BG};
         color: {TEXT_COLOR};
     }}
+
+    /* --- LOGO SIZING (2x Bigger) --- */
+    /* Targets the image inside the sidebar header */
+    [data-testid="stSidebarHeader"] img {{
+        height: 6rem !important;  /* Standard is usually ~3rem */
+        width: auto !important;
+        max-width: 100% !important;
+    }}
     
-    /* Buttons (Primary Purple) */
+    /* --- BUTTONS (Grey Theme) --- */
     .stButton>button {{ 
-        background-color: {PRIMARY_PURPLE}; 
+        background-color: {PRIMARY_GREY}; 
         color: #FFFFFF; 
         border-radius: 8px; 
         padding: 10px 24px; 
@@ -64,8 +73,8 @@ st.markdown(
         transition: all 0.3s ease;
     }}
     .stButton>button:hover {{ 
-        background-color: #4b55a8; 
-        box-shadow: 0 4px 14px 0 rgba(94, 106, 210, 0.39);
+        background-color: #444444; /* Darker Grey on Hover */
+        box-shadow: 0 4px 14px 0 rgba(0,0,0, 0.2);
         color: #FFFFFF;
     }}
 
@@ -79,6 +88,17 @@ st.markdown(
     [data-testid="stDownloadButton"] button:hover {{
         background-color: #f0f0f0 !important;
         border-color: #999999 !important;
+    }}
+
+    /* --- MULTISELECT TAGS (Light Grey instead of Red) --- */
+    span[data-baseweb="tag"] {{
+        background-color: {LIGHT_GREY} !important;
+        color: {TEXT_COLOR} !important;
+        border: 1px solid #cccccc;
+    }}
+    /* The 'X' icon in the tag */
+    span[data-baseweb="tag"] svg {{
+        fill: {TEXT_COLOR} !important;
     }}
 
     /* Headers & Text - Force Black */
@@ -547,7 +567,7 @@ def plot_cumulative_performance(results):
         y=cum_series.values, 
         mode="lines", 
         name="Portfolio", 
-        line=dict(color="#5e6ad2", width=3) # Changed to Purple
+        line=dict(color="#5e6ad2", width=3) 
     ))
     
     if not cum_bench.empty:
@@ -556,7 +576,7 @@ def plot_cumulative_performance(results):
             y=cum_bench.values, 
             mode="lines", 
             name="S&P 500 (Excess)", 
-            line=dict(color="#333333", width=2, dash="dash") # Changed to Dark Grey for Light Mode
+            line=dict(color="#333333", width=2, dash="dash")
         ))
     
     min_val = cum_series.min()
