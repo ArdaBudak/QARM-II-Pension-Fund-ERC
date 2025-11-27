@@ -6,6 +6,7 @@ import plotly.express as px
 import cvxpy as cp
 from scipy.optimize import minimize_scalar
 from datetime import datetime, timedelta
+from pandas.tseries.offsets import MonthEnd
 from fpdf import FPDF
 import io
 from sklearn.covariance import LedoitWolf
@@ -56,7 +57,6 @@ def load_data_bundle():
         etf = pd.read_parquet("etf_git.parquet")
 
         # 1. Extract Risk Free Rate (RF) from Compustat
-        # We group by date and take mean to handle duplicates (RF should be same for all stocks on a date)
         if "RF" in comp.columns:
             comp["date"] = pd.to_datetime(comp["date"])
             # Ensure RF is treated as numeric and sorted
@@ -99,8 +99,9 @@ def load_country_mapping():
         return {}
 
 def get_valid_assets(custom_data, start_date, end_date):
-    start_date = pd.to_datetime(start_date)
-    end_date = pd.to_datetime(end_date)
+    # FIX 1: Snap dates to Month End
+    start_date = pd.to_datetime(start_date) + MonthEnd(0)
+    end_date = pd.to_datetime(end_date) + MonthEnd(0)
     
     if custom_data.empty: 
         return {"stocks": [], "etfs": []}
@@ -111,7 +112,9 @@ def get_valid_assets(custom_data, start_date, end_date):
     return {"stocks": available_assets, "etfs": []} 
 
 def get_common_start_date(custom_data, selected_assets, user_start_date):
-    user_start_date = pd.to_datetime(user_start_date)
+    # FIX 1: Snap dates to Month End
+    user_start_date = pd.to_datetime(user_start_date) + MonthEnd(0)
+    
     missing = [a for a in selected_assets if a not in custom_data.columns]
     if missing:
         st.error(f"Assets not in database: {missing}")
@@ -145,7 +148,6 @@ def solve_erc_weights(cov_matrix):
     
     def solve_with_rho(rho):
         w = cp.Variable(n)
-        # ERC Objective: 1/2 w'Sw - rho * sum(log(w))
         objective = cp.Minimize(cp.quad_form(w, cov_matrix) - rho * cp.sum(cp.log(w)))
         constraints = [cp.sum(w) == 1, w >= 1e-6]
         prob = cp.Problem(objective, constraints)
@@ -186,23 +188,23 @@ def compute_max_drawdown(cumulative_returns):
 def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, lookback_months=36, ann_factor=12, tc_rate=0.001):
     """
     Main loop. 
-    Calculates:
-    - Returns: Gross Portfolio Return (after TC).
-    - Volatility: Standard Deviation of GROSS Returns (Industry Standard).
-    - Sharpe: (Mean Excess Return) / (Volatility of Gross Returns).
     """
     custom_data = _custom_data 
     rf_data = _rf_data
     country_map = load_country_mapping()
     
     try:
-        start_date_user = pd.to_datetime(start_date_user)
-        end_date_user = pd.to_datetime(end_date_user)
+        # FIX 1: Snap dates to Month End
+        start_date_user = pd.to_datetime(start_date_user) + MonthEnd(0)
+        end_date_user = pd.to_datetime(end_date_user) + MonthEnd(0)
         
         common_start = get_common_start_date(custom_data, selected_assets, start_date_user)
         if common_start is None: return None
         
         first_rebalance_date = common_start + pd.DateOffset(months=lookback_months)
+        # Snap rebalance date to month end just in case
+        first_rebalance_date = first_rebalance_date + MonthEnd(0)
+
         if first_rebalance_date > end_date_user:
             st.error(f"Not enough data for lookback. Need data until {first_rebalance_date.date()}")
             return None
@@ -231,7 +233,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             global_reb_pos = full_returns.index.get_loc(rebal_date)
             start_pos = max(0, global_reb_pos - lookback_months)
             
-            # Estimate Covariance on Gross Returns (Standard)
+            # Estimate Covariance on Gross Returns
             est_window = full_returns.iloc[start_pos:global_reb_pos].dropna(how="any")
             
             if est_window.shape[0] < n + 1:
@@ -276,7 +278,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
 
         # --- CALCULATE METRICS ---
         
-        # 1. Excess Returns (for Sharpe Numerator & Cumulative Chart)
+        # 1. Excess Returns
         if not rf_data.empty:
             aligned_rf = rf_data.reindex(port_returns.index, method='ffill').fillna(0.0)
             port_excess_returns = port_returns - aligned_rf
@@ -284,7 +286,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             st.warning("Risk Free Rate not found. Assuming 0%.")
             port_excess_returns = port_returns
 
-        # 2. Volatility (Using GROSS returns - Industry Standard)
+        # 2. Volatility (Using GROSS returns)
         ann_vol = port_returns.std() * np.sqrt(ann_factor)
         
         # 3. Sharpe Ratio (Mean Excess / Gross Vol)
@@ -295,7 +297,6 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         cum_port_excess = (1 + port_excess_returns).cumprod()
         max_drawdown = compute_max_drawdown(cum_port_excess)
 
-        # Risk Contributions (on last cov)
         if last_cov is not None:
             port_var = weights @ last_cov @ weights
             sigma_p = np.sqrt(port_var)
@@ -309,8 +310,8 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             "selected_assets": selected_assets,
             "weights": weights,
             "risk_contrib_pct": rc_pct,
-            "expected_return": ann_excess_ret * 100, # Annualized Excess Return
-            "volatility": ann_vol * 100,             # Annualized Gross Volatility
+            "expected_return": ann_excess_ret * 100, 
+            "volatility": ann_vol * 100,             
             "sharpe": sharpe,
             "port_returns": port_excess_returns,
             "cum_port": cum_port_excess,
@@ -346,12 +347,15 @@ def plot_risk_contributions(results):
 def plot_cumulative_performance(results):
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=results["cum_port"].index, y=results["cum_port"].values, mode="lines", name="Portfolio", line=dict(color="#0D6EFD", width=3)))
+    
+    # FIX 2: Added Log Scale
     fig.update_layout(
-        title="Cumulative Excess Return (Wealth vs Cash)", 
+        title="Cumulative Excess Return (Wealth vs Cash) - Log Scale", 
         paper_bgcolor="#000", 
         plot_bgcolor="#000", 
         font=dict(color="#E0E0E0", family="Times New Roman"),
-        yaxis_title="Growth of $1"
+        yaxis_title="Growth of $1 (Log)",
+        yaxis_type="log" 
     )
     return fig
 
@@ -387,7 +391,7 @@ with tab0:
     3. **Risk-Free Rate**: Automatically extracted from the dataset.
     4. **Results**: 
         - **Sharpe Ratio** = Avg Excess Return / Gross Volatility
-        - **Performance** = Cumulative Excess Return
+        - **Performance** = Cumulative Excess Return (Log Scale)
     """)
 
 with tab1:
@@ -407,6 +411,7 @@ with tab1:
         
         if start_date < end_date:
             all_assets = custom_data.columns.tolist()
+            # Snap dates for validation
             valid = get_valid_assets(custom_data, start_date, end_date)
             
             col1, col2 = st.columns(2)
