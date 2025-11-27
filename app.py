@@ -450,44 +450,52 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             "rc_df": pd.DataFrame(rc_over_time, index=selected_assets).T.sort_index(),
             "corr_matrix": est_window_clean.corr() if 'est_window_clean' in locals() else pd.DataFrame(),
             "country_exposure_over_time": country_exposure_over_time,
-            "max_drawdown": max_drawdown
+            "max_drawdown": max_drawdown,
+            # Added for SOTA Monte Carlo
+            "hist_data": est_window_clean if 'est_window_clean' in locals() else pd.DataFrame()
         }
     except Exception as e:
         st.error(f"Optimization Error: {e}")
         return None
 
-# --- MONTE CARLO SIMULATION ---
+# --- SOTA MONTE CARLO (HISTORICAL BOOTSTRAP) ---
 @st.cache_data
-def run_monte_carlo(mu, sigma, years=10, simulations=500, initial_capital=100000):
+def run_monte_carlo(hist_returns_df, weights, years=10, simulations=1000, initial_capital=100000):
     """
-    Simulates portfolio paths using Geometric Brownian Motion.
-    mu: annualized expected return (decimal)
-    sigma: annualized volatility (decimal)
+    State-of-the-Art Monte Carlo: Multivariate Historical Bootstrap.
+    Instead of assuming a normal distribution (GBM), we sample from REAL historical
+    vectors. This preserves:
+    1. Cross-Asset Correlations (Asset A vs Asset B)
+    2. Fat Tails (Real market crashes)
     """
-    dt = 1/12  # Monthly steps
-    n_steps = int(years * 12)
-    
-    # 1. Random Shocks: Normal Distribution
-    Z = np.random.normal(0, 1, (simulations, n_steps))
-    
-    # 2. GBM Equation: S_t = S_{t-1} * exp((mu - 0.5*sigma^2)*dt + sigma*sqrt(dt)*Z)
-    drift = (mu - 0.5 * sigma**2) * dt
-    diffusion = sigma * np.sqrt(dt) * Z
-    
-    daily_returns = np.exp(drift + diffusion)
-    
-    # 3. Accumulate
-    price_paths = np.zeros((simulations, n_steps + 1))
-    price_paths[:, 0] = initial_capital
-    
-    for t in range(1, n_steps + 1):
-        price_paths[:, t] = price_paths[:, t-1] * daily_returns[:, t-1]
+    if hist_returns_df.empty:
+        return [], [], [], [], []
         
+    # 1. Calculate Portfolio Historical Returns
+    port_hist_returns = hist_returns_df.values @ weights
+    
+    n_steps = int(years * 12) # Monthly steps
+    
+    # 2. Bootstrap Engine (Sample from history with replacement)
+    random_indices = np.random.choice(len(port_hist_returns), size=(simulations, n_steps))
+    
+    # 3. Construct Paths
+    simulated_returns = port_hist_returns[random_indices]
+    
+    # Growth factors: (1 + r)
+    growth_factors = 1 + simulated_returns
+    
+    # Accumulate
+    cumulative_growth = np.cumprod(growth_factors, axis=1)
+    
+    # Scale by capital
+    price_paths = initial_capital * np.hstack([np.ones((simulations, 1)), cumulative_growth])
+    
     # 4. Statistics
     dates = [datetime.now() + timedelta(days=30*i) for i in range(n_steps + 1)]
     median_path = np.median(price_paths, axis=0)
-    p95 = np.percentile(price_paths, 95, axis=0)
-    p05 = np.percentile(price_paths, 5, axis=0)
+    p95 = np.percentile(price_paths, 95, axis=0) # Bull case
+    p05 = np.percentile(price_paths, 5, axis=0)  # Bear case (Tail Risk)
     
     return dates, median_path, p95, p05, price_paths
 
@@ -515,7 +523,7 @@ def plot_monte_carlo(dates, median, p95, p05):
     ))
     
     fig.update_layout(
-        title="10-Year Monte Carlo Projection (GBM)",
+        title="10-Year Monte Carlo Projection (Historical Bootstrap)",
         paper_bgcolor="white", plot_bgcolor="white",
         font=dict(color="black", family="Times New Roman"),
         yaxis_title="Portfolio Value ($)",
@@ -735,46 +743,48 @@ with tab2:
 
 with tab3:
     st.title("Monte Carlo Simulation")
-    st.write("This simulation projects 10 years into the future using Geometric Brownian Motion based on your portfolio's historical risk/return profile.")
+    st.write("This simulation projects 10 years into the future using Historical Bootstrap based on your portfolio's assets history.")
     
     if "results" in st.session_state:
         res = st.session_state.results
         
-        # --- AUTOMATIC RUN ---
-        # We take the Annualized Return and Volatility from the optimizer results
-        mu = res['expected_return'] / 100.0
-        sigma = res['volatility'] / 100.0
-        
-        # User controls for the simulation (optional, but good for interactivity)
+        # User controls for the simulation
         c1, c2 = st.columns(2)
         initial_inv = c1.number_input("Initial Investment ($)", value=100000, step=10000)
         sim_years = c2.slider("Projection Years", 5, 30, 10)
         
-        with st.spinner("Running Monte Carlo Simulation..."):
+        with st.spinner("Running SOTA Historical Bootstrap Simulation..."):
+            # SOTA Monte Carlo Call
             dates, median, p95, p05, paths = run_monte_carlo(
-                mu, sigma, years=sim_years, initial_capital=initial_inv
+                hist_returns_df=res['hist_data'],
+                weights=res['weights'],
+                years=sim_years,
+                initial_capital=initial_inv
             )
             
-            # Metrics
-            final_median = median[-1]
-            final_95 = p95[-1]
-            final_05 = p05[-1]
-            
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Median Ending Value", f"${final_median:,.0f}")
-            m2.metric("Bull Case (95th)", f"${final_95:,.0f}", delta=f"{((final_95/initial_inv)-1)*100:.0f}%")
-            m3.metric("Bear Case (5th)", f"${final_05:,.0f}", delta=f"{((final_05/initial_inv)-1)*100:.0f}%")
-            
-            # Chart
-            st.plotly_chart(plot_monte_carlo(dates, median, p95, p05), use_container_width=True)
-            
-            # Interpretation
-            st.info(f"""
-            **What does this mean?**
-            Based on your portfolio's past volatility of **{res['volatility']:.2f}%**, there is a 95% probability that your 
-            **${initial_inv:,.0f}** investment will be worth at least **${final_05:,.0f}** in {sim_years} years.
-            However, in a bullish scenario, it could grow to **${final_95:,.0f}**.
-            """)
+            if len(dates) > 0:
+                # Metrics
+                final_median = median[-1]
+                final_95 = p95[-1]
+                final_05 = p05[-1]
+                
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Median Ending Value", f"${final_median:,.0f}")
+                m2.metric("Bull Case (95th)", f"${final_95:,.0f}", delta=f"{((final_95/initial_inv)-1)*100:.0f}%")
+                m3.metric("Bear Case (5th)", f"${final_05:,.0f}", delta=f"{((final_05/initial_inv)-1)*100:.0f}%")
+                
+                # Chart
+                st.plotly_chart(plot_monte_carlo(dates, median, p95, p05), use_container_width=True)
+                
+                # Interpretation
+                st.info(f"""
+                **Methodology: Historical Bootstrap**
+                Unlike basic simulations that assume markets are 'Normal', this simulation samples from **actual historical events** in your assets' history. This accurately captures:
+                1. **Fat Tails:** Real market crashes and booms.
+                2. **Correlation Spikes:** How your assets move together during crises.
+                """)
+            else:
+                st.error("Insufficient historical data to run bootstrap simulation.")
             
     else:
         st.info("Please optimize a portfolio in the 'Asset Selection' tab first to enable simulations.")
