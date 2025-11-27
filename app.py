@@ -22,7 +22,7 @@ BUTTON_TEXT = "#000000"     # Black Text
 LIGHT_BG = "#FFFFFF"        # Main Background
 SIDEBAR_BG = "#F5F5F5"      # Light Grey Sidebar
 TEXT_COLOR = "#000000"      # Black Text
-TAB_UNDERLINE = "#999999"   # Darker Grey for Tab Highlight (Updated)
+TAB_UNDERLINE = "#999999"   # Darker Grey for Tab Highlight
 
 # --- IMAGE ENCODING HELPERS ---
 def get_base64_of_bin_file(bin_file):
@@ -33,7 +33,6 @@ def get_base64_of_bin_file(bin_file):
     except:
         return ""
 
-# Encode images for CSS injection
 banner_base64 = get_base64_of_bin_file("Gray-Manhattan-Morning-Wallpaper-Mural.jpg")
 logo_base64 = get_base64_of_bin_file("ERC Portfolio.png")
 
@@ -56,22 +55,32 @@ st.markdown(
     }}
     
     /* --- CUSTOM BANNER HEADER --- */
-    /* This targets the top fixed header bar in Streamlit */
     header {{
         background-image: url("data:image/jpg;base64,{banner_base64}") !important;
-        background-size: cover !important;       /* Scale image to fill width */
-        background-position: center 45% !important; /* Focus on the middle vertical slice */
+        background-size: cover !important;       
+        background-position: center 45% !important; 
         background-repeat: no-repeat !important;
-        height: 8rem !important;                 /* Set fixed height for the banner */
+        height: 8rem !important;                 
         z-index: 1 !important;
     }}
     
     /* Push content down to reveal the banner */
     .block-container {{
-        padding-top: 6rem !important; /* Updated to 6rem per request */
+        padding-top: 6rem !important; 
         padding-bottom: 1rem !important;
     }}
     
+    /* --- STICKY TABS IMPLEMENTATION --- */
+    /* This targets the container holding the tabs */
+    .stTabs [data-baseweb="tab-list"] {{
+        position: sticky !important;
+        top: 8rem !important; /* Height of your banner header */
+        z-index: 999 !important; /* Above charts, below logo overlay */
+        background-color: {LIGHT_BG} !important; /* Opaque bg so text doesn't overlap */
+        padding-top: 10px;
+        box-shadow: 0 4px 2px -2px rgba(0,0,0,0.1); /* Subtle shadow */
+    }}
+
     /* Sidebar Background */
     .stSidebar {{
         background-color: {SIDEBAR_BG};
@@ -169,13 +178,13 @@ if logo_base64:
         f"""
         <div style="
             position: fixed;
-            top: 1.5rem; /* Position relative to top of window */
+            top: 1.5rem; 
             left: 50%;
             transform: translateX(-50%);
-            z-index: 999999; /* Keep above the banner background */
+            z-index: 999999; 
             width: 100%;
             text-align: center;
-            pointer-events: none; /* Allow clicking through if needed */
+            pointer-events: none;
         ">
             <img src="data:image/png;base64,{logo_base64}" 
                  style="max-width: 300px; width: 80%; height: auto; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
