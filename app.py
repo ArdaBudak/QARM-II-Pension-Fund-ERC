@@ -612,9 +612,9 @@ def create_pdf_report(results):
 
     fig_risk = plot_risk_evolution(results)
     add_plot_to_pdf(fig_risk, "4. Risk Contribution Evolution")
-
+    
     # 4. Output PDF
-    return pdf.output(dest='S').encode('latin-1')
+    return bytes(pdf.output(dest='S'))
 
 # --- MAIN APP LAYOUT ---
 
