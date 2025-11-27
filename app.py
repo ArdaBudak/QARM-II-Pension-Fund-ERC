@@ -636,7 +636,7 @@ with tab3:
 
     We are a dedicated team of financial experts and developers passionate about helping individuals and institutions optimize their pension funds for maximum efficiency and risk management.
 
-    Our tool uses advanced optimization techniques, specifically Dynamic Equal Risk Contribution (ERC) with annual rebalancing, to create balanced portfolios that aim to equalize the risk contributions from each asset over time.
+    Our tool uses advanced optimization techniques, specifically Dynamic Equal Risk Contribution (ERC) with different rebalancing frequencies, to create balanced portfolios that aim to equalize the risk contributions from each asset over time.
 
     Built with Streamlit and powered by open-source libraries, this app provides an intuitive interface for selecting assets, analyzing historical data, and visualizing results.
 
