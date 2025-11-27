@@ -15,7 +15,7 @@ st.set_page_config(page_title="Pension Fund Optimizer", layout="wide")
 try:
     st.logo("ERC Portfolio.png")
 except:
-    pass # Handle case where logo file is missing
+    pass 
 
 st.markdown(
     """
@@ -44,52 +44,57 @@ st.markdown(
 # --- DATA LOADING FUNCTIONS ---
 
 @st.cache_data
-def load_rf_data():
-    """Loads the Risk Free Rate data."""
+def load_data_bundle():
+    """
+    Loads returns for Stocks and ETFs, and extracts the Risk Free Rate 
+    from the Compustat file.
+    Returns: (returns_df, rf_series)
+    """
     try:
-        rf = pd.read_parquet("risk_free_rate.parquet")
-        # Ensure index is datetime
-        if "date" in rf.columns:
-            rf = rf.set_index("date")
-        rf.index = pd.to_datetime(rf.index)
-        
-        # Keep only the first column and rename it to 'RF' for consistency
-        rf = rf.iloc[:, [0]]
-        rf.columns = ["RF"]
-        return rf
-    except Exception as e:
-        # If file is missing, return empty DF to signal fallback to 0%
-        return pd.DataFrame()
-
-@st.cache_data
-def load_custom_data():
-    try:
+        # Load files
         comp = pd.read_parquet("compustat_git.parquet")
         etf = pd.read_parquet("etf_git.parquet")
 
-        comp = comp[["date", "company_name", "monthly_return"]].copy()
-        comp["date"] = pd.to_datetime(comp["date"])
-        comp = comp.rename(columns={"company_name": "asset", "monthly_return": "ret"})
+        # 1. Extract Risk Free Rate (RF) from Compustat
+        # We group by date and take mean to handle duplicates (RF should be same for all stocks on a date)
+        if "RF" in comp.columns:
+            comp["date"] = pd.to_datetime(comp["date"])
+            # Ensure RF is treated as numeric and sorted
+            rf_raw = comp.groupby("date")["RF"].mean().sort_index()
+            rf_series = rf_raw.fillna(0.0)
+        else:
+            rf_series = pd.Series(dtype=float)
 
-        etf = etf[["date", "ETF", "return_monthly"]].copy()
-        etf["date"] = pd.to_datetime(etf["date"])
-        etf = etf.rename(columns={"ETF": "asset", "return_monthly": "ret"})
+        # 2. Process Stocks (Compustat)
+        comp_ret = comp[["date", "company_name", "monthly_return"]].copy()
+        comp_ret["date"] = pd.to_datetime(comp_ret["date"])
+        comp_ret = comp_ret.rename(columns={"company_name": "asset", "monthly_return": "ret"})
 
-        returns_long = pd.concat([comp, etf], ignore_index=True)
+        # 3. Process ETFs
+        etf_ret = etf[["date", "ETF", "return_monthly"]].copy()
+        etf_ret["date"] = pd.to_datetime(etf_ret["date"])
+        etf_ret = etf_ret.rename(columns={"ETF": "asset", "return_monthly": "ret"})
+
+        # 4. Merge and Pivot
+        returns_long = pd.concat([comp_ret, etf_ret], ignore_index=True)
         returns_wide = returns_long.pivot(index="date", columns="asset", values="ret").sort_index()
         returns_wide.index = pd.to_datetime(returns_wide.index)
-        return returns_wide
+
+        return returns_wide, rf_series
+
     except Exception as e:
-        st.error(f"Error loading data: {e}")
-        return pd.DataFrame()
+        st.error(f"Error loading data bundle: {e}")
+        return pd.DataFrame(), pd.Series()
 
 @st.cache_data
 def load_country_mapping():
     try:
         comp = pd.read_parquet("compustat_git.parquet")
-        mapping = comp[["company_name", "country_code"]].drop_duplicates()
-        mapping = mapping.set_index("company_name")["country_code"].to_dict()
-        return mapping
+        if "country_code" in comp.columns:
+            mapping = comp[["company_name", "country_code"]].drop_duplicates()
+            mapping = mapping.set_index("company_name")["country_code"].to_dict()
+            return mapping
+        return {}
     except:
         return {}
 
@@ -97,30 +102,13 @@ def get_valid_assets(custom_data, start_date, end_date):
     start_date = pd.to_datetime(start_date)
     end_date = pd.to_datetime(end_date)
     
-    # Reload raw files just to get unique lists (or could derive from columns)
-    # Using columns from custom_data is faster/safer if already loaded
     if custom_data.empty: 
         return {"stocks": [], "etfs": []}
 
     subset = custom_data.loc[start_date:end_date]
     available_assets = subset.columns[subset.notna().any()].tolist()
     
-    # We try to separate Stocks vs ETFs based on the original logic
-    # Since we merged them in load_custom_data, we can't easily distinguish 
-    # unless we reload source files or cache the lists. 
-    # For speed, let's just reload the source lists once.
-    try:
-        comp = pd.read_parquet("compustat_git.parquet")
-        etf = pd.read_parquet("etf_git.parquet")
-        comp_assets = set(comp["company_name"].unique())
-        etf_assets = set(etf["ETF"].unique())
-    except:
-        return {"stocks": available_assets, "etfs": []}
-
-    valid_stocks = sorted(list(comp_assets & set(available_assets)))
-    valid_etfs = sorted(list(etf_assets & set(available_assets)))
-
-    return {"stocks": valid_stocks, "etfs": valid_etfs}
+    return {"stocks": available_assets, "etfs": []} 
 
 def get_common_start_date(custom_data, selected_assets, user_start_date):
     user_start_date = pd.to_datetime(user_start_date)
@@ -162,11 +150,9 @@ def solve_erc_weights(cov_matrix):
         constraints = [cp.sum(w) == 1, w >= 1e-6]
         prob = cp.Problem(objective, constraints)
         
-        # FIX: Using CLARABEL instead of deprecated ECOS
         try:
             prob.solve(solver=cp.CLARABEL)
         except:
-            # Fallback if CLARABEL not installed
             prob.solve(solver=cp.SCS)
             
         if prob.status == "optimal":
@@ -197,11 +183,17 @@ def compute_max_drawdown(cumulative_returns):
     return drawdowns.min() * 100
 
 @st.cache_data(show_spinner=True)
-def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, lookback_months=36, ann_factor=12, tc_rate=0.001):
-    # Note: _custom_data starts with underscore to prevent Streamlit from hashing the whole DF (speedup)
+def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, lookback_months=36, ann_factor=12, tc_rate=0.001):
+    """
+    Main loop. 
+    Calculates:
+    - Returns: Gross Portfolio Return (after TC).
+    - Volatility: Standard Deviation of GROSS Returns (Industry Standard).
+    - Sharpe: (Mean Excess Return) / (Volatility of Gross Returns).
+    """
     custom_data = _custom_data 
+    rf_data = _rf_data
     country_map = load_country_mapping()
-    rf_data = load_rf_data() # Load Risk Free Rate
     
     try:
         start_date_user = pd.to_datetime(start_date_user)
@@ -233,11 +225,13 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         total_tc = 0.0
         last_cov = None
 
+        # --- REBALANCING LOOP ---
         for j, reb_idx in enumerate(rebalance_indices):
             rebal_date = period_dates[reb_idx]
             global_reb_pos = full_returns.index.get_loc(rebal_date)
             start_pos = max(0, global_reb_pos - lookback_months)
             
+            # Estimate Covariance on Gross Returns (Standard)
             est_window = full_returns.iloc[start_pos:global_reb_pos].dropna(how="any")
             
             if est_window.shape[0] < n + 1:
@@ -252,10 +246,10 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                 except:
                     weights = previous_weights
             
-            # Calculate Transaction Costs
+            # Transaction Costs
             turnover = np.sum(np.abs(weights - previous_weights)) / 2
             cost = turnover * tc_rate
-            total_tc += cost # Track total for metric
+            total_tc += cost
             
             previous_weights = weights.copy()
             weights_over_time[rebal_date] = weights
@@ -267,7 +261,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                 country_exp[c] = country_exp.get(c, 0) + w
             country_exposure_over_time[rebal_date] = country_exp
 
-            # Apply Returns & Subtract Cost
+            # Calculate Returns (Gross of RF, Net of Fees)
             if j == len(rebalance_indices) - 1:
                 end_slice = len(period_dates)
             else:
@@ -275,35 +269,33 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                 
             sub_ret = period_returns.iloc[reb_idx:end_slice].fillna(0.0)
             if not sub_ret.empty:
-                # 1. Gross Portfolio Return
                 period_port_ret = sub_ret.values @ weights
-                
-                # 2. FIX: Subtract Transaction Cost from the first day of the period
-                # (Impact of rebalancing happens instantaneously at the start)
                 if len(period_port_ret) > 0:
-                    period_port_ret[0] -= cost
-                
+                    period_port_ret[0] -= cost 
                 port_returns.iloc[reb_idx:end_slice] = period_port_ret
 
-        # Final Metrics
-        cum_port = (1 + port_returns).cumprod()
-        max_drawdown = compute_max_drawdown(cum_port)
-        ann_return = port_returns.mean() * ann_factor
+        # --- CALCULATE METRICS ---
+        
+        # 1. Excess Returns (for Sharpe Numerator & Cumulative Chart)
+        if not rf_data.empty:
+            aligned_rf = rf_data.reindex(port_returns.index, method='ffill').fillna(0.0)
+            port_excess_returns = port_returns - aligned_rf
+        else:
+            st.warning("Risk Free Rate not found. Assuming 0%.")
+            port_excess_returns = port_returns
+
+        # 2. Volatility (Using GROSS returns - Industry Standard)
         ann_vol = port_returns.std() * np.sqrt(ann_factor)
         
-        # FIX: Sharpe Ratio using Risk Free Rate
-        if not rf_data.empty:
-            # Align RF to portfolio dates (ffill)
-            aligned_rf = rf_data.reindex(port_returns.index, method='ffill').fillna(0.0)["RF"]
-            # Assume RF in file is monthly decimal. If annualized, logic differs. 
-            # We calculate Excess Return series
-            excess_ret = port_returns - aligned_rf
-            sharpe = (excess_ret.mean() * ann_factor) / ann_vol if ann_vol > 0 else 0.0
-        else:
-            # Fallback (Risk Free = 0)
-            sharpe = ann_return / ann_vol if ann_vol > 0 else 0.0
+        # 3. Sharpe Ratio (Mean Excess / Gross Vol)
+        ann_excess_ret = port_excess_returns.mean() * ann_factor
+        sharpe = ann_excess_ret / ann_vol if ann_vol > 0 else 0.0
+        
+        # 4. Cumulative Return (Excess)
+        cum_port_excess = (1 + port_excess_returns).cumprod()
+        max_drawdown = compute_max_drawdown(cum_port_excess)
 
-        # Risk Contributions (Last period)
+        # Risk Contributions (on last cov)
         if last_cov is not None:
             port_var = weights @ last_cov @ weights
             sigma_p = np.sqrt(port_var)
@@ -317,11 +309,11 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             "selected_assets": selected_assets,
             "weights": weights,
             "risk_contrib_pct": rc_pct,
-            "expected_return": ann_return * 100,
-            "volatility": ann_vol * 100,
+            "expected_return": ann_excess_ret * 100, # Annualized Excess Return
+            "volatility": ann_vol * 100,             # Annualized Gross Volatility
             "sharpe": sharpe,
-            "port_returns": port_returns,
-            "cum_port": cum_port,
+            "port_returns": port_excess_returns,
+            "cum_port": cum_port_excess,
             "total_tc": total_tc * 100,
             "weights_df": pd.DataFrame(weights_over_time, index=selected_assets).T.sort_index(),
             "corr_matrix": est_window.corr(),
@@ -333,7 +325,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         st.error(f"Optimization Error: {e}")
         return None
 
-# --- VISUALIZATION FUNCTIONS ---
+# --- VISUALIZATION ---
 
 def plot_final_weights(results):
     df = pd.DataFrame({"Asset": results["selected_assets"], "Weight (%)": results["weights"] * 100})
@@ -354,7 +346,13 @@ def plot_risk_contributions(results):
 def plot_cumulative_performance(results):
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=results["cum_port"].index, y=results["cum_port"].values, mode="lines", name="Portfolio", line=dict(color="#0D6EFD", width=3)))
-    fig.update_layout(title="Net Cumulative Return (After Fees)", paper_bgcolor="#000", plot_bgcolor="#000", font=dict(color="#E0E0E0", family="Times New Roman"))
+    fig.update_layout(
+        title="Cumulative Excess Return (Wealth vs Cash)", 
+        paper_bgcolor="#000", 
+        plot_bgcolor="#000", 
+        font=dict(color="#E0E0E0", family="Times New Roman"),
+        yaxis_title="Growth of $1"
+    )
     return fig
 
 def plot_weights_over_time(results):
@@ -377,7 +375,7 @@ def plot_country_exposure_over_time(results):
     fig.update_layout(paper_bgcolor="#000", plot_bgcolor="#000", font=dict(color="#E0E0E0", family="Times New Roman"), yaxis_title="Exposure (%)")
     return fig
 
-# --- MAIN APP LAYOUT ---
+# --- MAIN APP ---
 
 tab0, tab1, tab2, tab3 = st.tabs(["How to Use", "Asset Selection", "Portfolio Results", "About Us"])
 
@@ -386,15 +384,19 @@ with tab0:
     st.markdown("""
     1. **Asset Selection**: Choose your date range and assets.
     2. **Optimization**: The app calculates the Equal Risk Contribution (ERC) portfolio.
-    3. **Results**: View Net Returns (after transaction costs) and risk metrics.
+    3. **Risk-Free Rate**: Automatically extracted from the dataset.
+    4. **Results**: 
+        - **Sharpe Ratio** = Avg Excess Return / Gross Volatility
+        - **Performance** = Cumulative Excess Return
     """)
 
 with tab1:
     st.title("Asset Selection")
-    custom_data = load_custom_data()
+    # Load both Returns and RF
+    custom_data, rf_data = load_data_bundle()
     
     if custom_data.empty:
-        st.error("Data not loaded. Check parquet files.")
+        st.error("Data not loaded. Check 'compustat_git.parquet' and 'etf_git.parquet'.")
     else:
         min_date = custom_data.index.min().date()
         max_date = datetime(2024, 12, 31).date()
@@ -404,37 +406,43 @@ with tab1:
         end_date = col2.date_input("End Date", value=max_date, min_value=min_date, max_value=max_date)
         
         if start_date < end_date:
+            all_assets = custom_data.columns.tolist()
             valid = get_valid_assets(custom_data, start_date, end_date)
+            
             col1, col2 = st.columns(2)
-            sel_stocks = col1.multiselect("Stocks", valid["stocks"])
-            sel_etfs = col2.multiselect("ETFs", valid["etfs"])
-            selected_assets = sel_stocks + sel_etfs
+            selected_assets = col1.multiselect("Select Assets", all_assets)
             
             rebalance_freq = st.selectbox("Rebalance Frequency", ["Quarterly", "Semi-Annually", "Annually"], index=2)
             
             if st.button("Optimize My Portfolio"):
                 if not selected_assets:
-                    st.error("Select assets.")
+                    st.error("Select at least one asset.")
                 else:
                     with st.spinner("Optimizing..."):
-                        # Pass custom_data with underscore in args to prevent hashing if using the cached function
-                        results = perform_optimization(selected_assets, start_date, end_date, rebalance_freq, custom_data)
+                        results = perform_optimization(
+                            selected_assets, 
+                            start_date, 
+                            end_date, 
+                            rebalance_freq, 
+                            custom_data, 
+                            rf_data
+                        )
                         if results:
                             st.session_state.results = results
                             st.success("Done! Go to Results tab.")
         else:
-            st.error("Invalid dates.")
+            st.error("End Date must be after Start Date.")
 
 with tab2:
-    st.title("Portfolio Results")
+    st.title("Portfolio Results (Excess Return)")
     if "results" in st.session_state:
         res = st.session_state.results
         
         col1, col2, col3, col4, col5 = st.columns(5)
-        col1.metric("Exp. Annual Return", f"{res['expected_return']:.2f}%")
-        col2.metric("Annual Volatility", f"{res['volatility']:.2f}%")
+        col1.metric("Ann. Excess Return", f"{res['expected_return']:.2f}%")
+        col2.metric("Ann. Gross Volatility", f"{res['volatility']:.2f}%")
         col3.metric("Sharpe Ratio", f"{res['sharpe']:.2f}")
-        col4.metric("Max Drawdown", f"{res['max_drawdown']:.2f}%")
+        col4.metric("Max Drawdown (Excess)", f"{res['max_drawdown']:.2f}%")
         col5.metric("Total Trans. Costs", f"{res['total_tc']:.2f}%")
         
         st.plotly_chart(plot_cumulative_performance(res), use_container_width=True)
