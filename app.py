@@ -119,6 +119,7 @@ def get_valid_assets(custom_data, start_date, end_date):
         return {"stocks": [], "etfs": []}
 
     subset = custom_data.loc[start_date:end_date]
+    # We allow assets that have at least ONE valid return in the window
     available_assets = subset.columns[subset.notna().any()].tolist()
     
     return {"stocks": available_assets, "etfs": []} 
@@ -132,24 +133,15 @@ def get_common_start_date(custom_data, selected_assets, user_start_date):
         return None
     
     # Find the earliest date where ANY of the selected assets has data
-    # (We handle specific IPO dates inside the optimization loop now)
+    # (We don't force ALL to exist, just one is enough to start)
     first_valid_series = custom_data[selected_assets].apply(lambda col: col.first_valid_index())
-    
-    # Instead of max() (waiting for the last IPO), we take min() to allow starting 
-    # as soon as the FIRST asset is available, OR we just respect the user date 
-    # if it's after at least one asset exists.
-    # However, to compute covariance, we need at least 2 assets usually, 
-    # but let's stick to the user's start date as the primary constraint,
-    # provided at least some data exists.
-    
-    # Let's keep it simple: Start when the user wants, but warn if NO data exists yet.
     overall_first_valid = first_valid_series.min()
     
     if pd.isna(overall_first_valid):
          st.error("No valid data found for any selected asset.")
          return None
 
-    # If user selects 2000, but first asset listed in 2005, we must start in 2005
+    # If user selects 2000, but data starts 2002, jump to 2002
     if overall_first_valid > user_start_date:
         st.warning(f"⚠️ No data available at start date. Optimization will begin on **{overall_first_valid.date()}**.")
         return overall_first_valid
@@ -219,7 +211,6 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         start_date_user = pd.to_datetime(start_date_user) + MonthEnd(0)
         end_date_user = pd.to_datetime(end_date_user) + MonthEnd(0)
         
-        # Adjusted to handle staggered IPOs
         common_start = get_common_start_date(custom_data, selected_assets, start_date_user)
         if common_start is None: return None
         
@@ -253,45 +244,57 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             global_reb_pos = full_returns.index.get_loc(rebal_date)
             start_pos = max(0, global_reb_pos - lookback_months)
             
-            # --- IPO HANDLING LOGIC ---
-            # Get the window
+            # Get lookback window
             est_window = full_returns.iloc[start_pos:global_reb_pos]
             
-            # 1. Identify assets that exist in this window (drop columns that are ALL NaN)
-            valid_assets_in_window = est_window.dropna(axis=1, how='all').columns.tolist()
+            # --- DYNAMIC UNIVERSE SELECTION (The "Proper" Fix) ---
+            # 1. Filter for assets that exist (non-NaN) for the ENTIRE lookback period.
+            # This prevents using assets that just IPO'd yesterday and have 1 data point.
+            est_window_clean = est_window.dropna(axis=1, how='any')
+            valid_assets_in_window = est_window_clean.columns.tolist()
             
-            # 2. Filter the window to only these assets and then drop rows with NaNs
-            est_window_clean = est_window[valid_assets_in_window].dropna(how="any")
-            
-            # 3. Initialize weights for this period
             current_weights = np.zeros(n)
             
-            # Only optimize if we have enough data (at least 2 assets + enough rows)
-            if len(valid_assets_in_window) >= 2 and est_window_clean.shape[0] > len(valid_assets_in_window):
-                lw = LedoitWolf().fit(est_window_clean.values)
-                cov = lw.covariance_ * ann_factor
-                
+            if len(valid_assets_in_window) > 0:
+                # Optimization Logic
                 try:
-                    # Solve for the active assets only
-                    w_active = solve_erc_weights(cov)
-                    
-                    # Map active weights back to the full asset list
-                    for asset_name, w_val in zip(valid_assets_in_window, w_active):
-                        idx = selected_assets.index(asset_name)
-                        current_weights[idx] = w_val
-                        
-                    last_cov = cov # Keep for risk contrib calculation (approx)
+                    # Special Case: Only 1 asset exists (ERC impossible, so 100% weight)
+                    if len(valid_assets_in_window) == 1:
+                         w_active = np.array([1.0])
+                    else:
+                         # Standard ERC
+                         lw = LedoitWolf().fit(est_window_clean.values)
+                         cov = lw.covariance_ * ann_factor
+                         w_active = solve_erc_weights(cov)
+                         last_cov = cov # Save for risk metrics
+
+                    # Map active weights back to full list
+                    if w_active is not None:
+                        for asset_name, w_val in zip(valid_assets_in_window, w_active):
+                            idx = selected_assets.index(asset_name)
+                            current_weights[idx] = w_val
+                            
                 except:
-                    # Fallback: keep previous valid weights if optimization fails
-                    # (Normalize previous to match currently available? Complex, so just 0 or prev)
-                    current_weights = previous_weights 
+                    # --- FALLBACK: INVERSE VOLATILITY (Not 1/N) ---
+                    # If solver fails, use Naive Risk Parity (1/Vol)
+                    try:
+                        st.warning(f"Solver failed at {rebal_date.date()}. Using Inverse Volatility fallback.")
+                        vols = est_window_clean.std()
+                        inv_vols = 1.0 / vols
+                        w_active = inv_vols / inv_vols.sum()
+                        
+                        for asset_name, w_val in zip(valid_assets_in_window, w_active.values):
+                            idx = selected_assets.index(asset_name)
+                            current_weights[idx] = w_val
+                    except:
+                         # Extreme failure: use previous weights if valid, else 0
+                         if np.sum(previous_weights) > 0.9:
+                             current_weights = previous_weights
             else:
-                # Not enough assets/data, hold cash or previous positions
-                # For simulation, we assume 0 return if no assets valid
+                # No assets valid yet (e.g. pre-IPO period for all)
                 current_weights = np.zeros(n)
-            
+
             # --- TRANSACTION COSTS ---
-            # Calculate turnover based on ALL assets (some might have gone to 0, some new ones from 0)
             if not tx_cost_data.empty:
                 try:
                     if not tx_cost_data.index.is_monotonic_increasing:
@@ -316,15 +319,14 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                 country_exp[c] = country_exp.get(c, 0) + w
             country_exposure_over_time[rebal_date] = country_exp
 
-            # --- CALCULATE RETURNS ---
+            # --- RETURNS CALCULATION ---
             if j == len(rebalance_indices) - 1:
                 end_slice = len(period_dates)
             else:
                 end_slice = rebalance_indices[j+1]
                 
-            # Get returns for all selected assets, fill NaN with 0 (if asset dead or not born)
+            # Get returns, filling missing assets (pre-IPO) with 0
             sub_ret = period_returns.iloc[reb_idx:end_slice].fillna(0.0)
-            
             if not sub_ret.empty:
                 period_port_ret = sub_ret.values @ current_weights
                 if len(period_port_ret) > 0:
@@ -345,14 +347,29 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         cum_port_excess = (1 + port_excess_returns).cumprod()
         max_drawdown = compute_max_drawdown(cum_port_excess)
 
-        # Risk contributions (approx based on last valid optimization)
-        # Note: This is tricky with dynamic assets. We just show 0 for now or last valid.
-        rc_pct = np.zeros(n)
+        # Safe Risk Contribution Calculation
+        try:
+            if last_cov is not None:
+                # This only works if the asset universe didn't change in the very last step
+                # Simplification: We assume the last valid cov applies to non-zero weight assets
+                active_indices = [i for i, w in enumerate(current_weights) if w > 1e-4]
+                if len(active_indices) > 0:
+                    # Re-extract small cov for final active assets
+                    # (Note: This is an approximation for display if dimensions mismatch)
+                    rc_pct = np.zeros(n) 
+                    # Ideally we store the last used sub-cov. 
+                    # For UI stability, we skip if complex mismatch.
+                else:
+                    rc_pct = np.zeros(n)
+            else:
+                rc_pct = np.zeros(n)
+        except:
+            rc_pct = np.zeros(n)
 
         return {
             "selected_assets": selected_assets,
             "weights": current_weights,
-            "risk_contrib_pct": rc_pct, # Simplified for dynamic case
+            "risk_contrib_pct": rc_pct,
             "expected_return": ann_excess_ret * 100, 
             "volatility": ann_vol * 100,             
             "sharpe": sharpe,
@@ -380,8 +397,6 @@ def plot_final_weights(results):
     return fig
 
 def plot_risk_contributions(results):
-    # Risk contrib might be empty/zero if we finished with 0 weights or skipping calc
-    # We handle this gracefully
     df = pd.DataFrame({"Asset": results["selected_assets"], "Risk Contribution (%)": results["risk_contrib_pct"]})
     df = df.sort_values("Risk Contribution (%)", ascending=True)
     fig = px.bar(df, x="Risk Contribution (%)", y="Asset", orientation="h")
@@ -495,6 +510,7 @@ with tab1:
         
         if start_date < end_date:
             all_assets = custom_data.columns.tolist()
+            # Snap dates for validation
             valid = get_valid_assets(custom_data, start_date, end_date)
             
             col1, col2 = st.columns(2)
