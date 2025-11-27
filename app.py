@@ -512,7 +512,7 @@ def plot_cumulative_performance(results):
     else: nice_dtick = 1
 
     fig.update_layout(
-        ="Cumulative Excess Return (Log Scale)", paper_bgcolor="white", plot_bgcolor="white",
+        "Cumulative Excess Return (Log Scale)", paper_bgcolor="white", plot_bgcolor="white",
         font=dict(color="black", family="Times New Roman"), yaxis_="Growth of $1 (Log)",
         yaxis=dict(type="log", dtick=nice_dtick, tickformat=".2f", minor=dict(showgrid=False)),
         height=650, template="plotly_white"
