@@ -312,7 +312,6 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                             
                 except:
                     try:
-                        # Fallback: Inverse Volatility
                         vols = est_window_clean.std()
                         inv_vols = 1.0 / vols
                         w_active = inv_vols / inv_vols.sum()
@@ -327,9 +326,8 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                 current_weights = np.zeros(n)
 
             rc_over_time[rebal_date] = current_rc
-            rc_pct = current_rc # Update final RC for bar chart
+            rc_pct = current_rc
 
-            # Transaction Costs
             if not tx_cost_data.empty:
                 try:
                     if not tx_cost_data.index.is_monotonic_increasing:
@@ -469,6 +467,8 @@ def create_pdf_report(results):
             pdf.set_font("Times", 'B', 14)
             pdf.cell(0, 10, title, ln=1, align='C')
             with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmpfile:
+                # Ensure dimensions are explicit for kaleido
+                fig.update_layout(width=1000, height=600)
                 fig.write_image(tmpfile.name)
                 pdf.image(tmpfile.name, x=10, y=30, w=190)
 
@@ -496,7 +496,8 @@ def plot_risk_evolution(results):
         plot_bgcolor="#000", 
         font=dict(color="#E0E0E0", family="Times New Roman"),
         yaxis_title="Risk Contribution (%)",
-        showlegend=True
+        showlegend=True,
+        height=500
     )
     return fig
 
@@ -530,7 +531,8 @@ def plot_cumulative_performance(results):
         log_min = np.log10(min_val)
         log_max = np.log10(max_val)
         log_range = log_max - log_min
-        raw_dtick = log_range / 6
+        # Reduce grid lines (remove half roughly) by dividing by 3 instead of 6
+        raw_dtick = log_range / 3 
         magnitude = 10 ** np.floor(np.log10(raw_dtick))
         normalized = raw_dtick / magnitude
         if normalized < 1.5: nice_dtick = 1.0 * magnitude
@@ -549,7 +551,8 @@ def plot_cumulative_performance(results):
             dtick=nice_dtick,
             tickformat=".2f",
             minor=dict(showgrid=False) 
-        )
+        ),
+        height=650 # Taller chart
     )
     return fig
 
@@ -561,7 +564,8 @@ def plot_weights_over_time(results):
         paper_bgcolor="#000", 
         plot_bgcolor="#000", 
         font=dict(color="#E0E0E0", family="Times New Roman"),
-        title="Weights Evolution (Stacked)"
+        title="Weights Evolution (Stacked)",
+        height=500
     )
     return fig
 
@@ -576,7 +580,7 @@ def plot_country_exposure_over_time(results):
     fig = go.Figure()
     for country in df.columns:
         fig.add_trace(go.Scatter(x=df.index, y=df[country]*100, mode="lines", name=str(country)))
-    fig.update_layout(paper_bgcolor="#000", plot_bgcolor="#000", font=dict(color="#E0E0E0", family="Times New Roman"), yaxis_title="Exposure (%)")
+    fig.update_layout(paper_bgcolor="#000", plot_bgcolor="#000", font=dict(color="#E0E0E0", family="Times New Roman"), yaxis_title="Exposure (%)", height=500)
     return fig
 
 # --- MAIN APP ---
@@ -584,11 +588,11 @@ def plot_country_exposure_over_time(results):
 tab0, tab1, tab2, tab3 = st.tabs(["How to Use", "Asset Selection", "Portfolio Results", "About Us"])
 
 with tab0:
-    # --- EMBEDDED CHATBOT ---
+    # --- EMBEDDED CHATBOT (Silent + Dark Mode) ---
     components.html(
         """
         <style>
-            body { margin: 0; padding: 0; background-color: #000000; height: 100vh; width: 100%; overflow: hidden; }
+            body { background-color: #000000; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
             .vfrc-widget--chat { background-color: #000000 !important; height: 100% !important; }
         </style>
         <script type="text/javascript">
@@ -599,8 +603,12 @@ with tab0:
                   verify: { projectID: '69283f7c489631e28656d2c1' },
                   url: 'https://general-runtime.voiceflow.com',
                   versionID: 'production',
-                  render: { mode: 'embedded', target: document.body },
+                  render: {
+                      mode: 'embedded',
+                      target: document.body
+                  },
                   autostart: true
+                  // Voice removed
                 });
               }
               v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs";
