@@ -6,6 +6,8 @@ import plotly.express as px
 import cvxpy as cp
 import streamlit.components.v1 as components
 import base64
+from fpdf import FPDF
+import io
 from scipy.optimize import minimize_scalar
 from datetime import datetime, timedelta
 from pandas.tseries.offsets import MonthEnd
@@ -544,6 +546,86 @@ def plot_cumulative_performance(results):
     )
     return fig
 
+
+def create_pdf_report(results):
+    """
+    Generates a professional PDF report using FPDF2 and Kaleido.
+    """
+    class PDF(FPDF):
+        def header(self):
+            # You can add your logo here if you want
+            # self.image(logo_bytes, 10, 8, 33) 
+            self.set_font('Helvetica', 'B', 15)
+            self.cell(0, 10, 'Pension Fund Optimizer - ERC Report', border=False, align='C')
+            self.ln(20)
+
+        def footer(self):
+            self.set_y(-15)
+            self.set_font('Helvetica', 'I', 8)
+            self.cell(0, 10, f'Page {self.page_no()}', align='C')
+
+    # 1. Setup PDF
+    pdf = PDF()
+    pdf.add_page()
+    pdf.set_font("Helvetica", size=12)
+
+    # 2. Add Summary Metrics Section
+    pdf.set_font("Helvetica", 'B', 14)
+    pdf.cell(0, 10, "1. Executive Summary", ln=True)
+    pdf.ln(5)
+    
+    pdf.set_font("Helvetica", size=11)
+    # Create a simple table-like structure for metrics
+    metrics = [
+        ("Expected Return (Ann.)", f"{results['expected_return']:.2f}%"),
+        ("Volatility (Ann.)", f"{results['volatility']:.2f}%"),
+        ("Sharpe Ratio", f"{results['sharpe']:.2f}"),
+        ("Max Drawdown", f"{results['max_drawdown']:.2f}%"),
+        ("Transaction Costs", f"{results['total_tc']:.2f}%"),
+    ]
+    
+    col_width = pdf.w / 2.5
+    row_height = 8
+    
+    for key, value in metrics:
+        pdf.cell(col_width, row_height, key, border=1)
+        pdf.cell(col_width, row_height, value, border=1, ln=True)
+        
+    pdf.ln(10)
+
+    # 3. Add Charts
+    # Helper to convert Plotly fig to Image Bytes
+    def add_plot_to_pdf(fig, title):
+        pdf.add_page()
+        pdf.set_font("Helvetica", 'B', 14)
+        pdf.cell(0, 10, title, ln=True)
+        pdf.ln(5)
+        
+        # Convert Plotly to PNG bytes using Kaleido
+        img_bytes = fig.to_image(format="png", width=1200, height=700, scale=2)
+        
+        # Save bytes to a temporary memory buffer
+        with io.BytesIO(img_bytes) as img_stream:
+            pdf.image(img_stream, x=10, w=190) # w=190 fits A4 width nicely
+
+    # Re-create figures for the report (or pass them if you stored the fig objects)
+    # Note: In your current code, you generate figs inside the UI functions. 
+    # Ideally, your perform_optimization should return the FIGURE OBJECTS, not just dataframes.
+    # Assuming you update perform_optimization to return 'fig_cum', 'fig_weights', etc.:
+    
+    # FOR DEMONSTRATION: Re-generating the charts here based on results
+    # (In production, generate these once and pass them in)
+    fig_cum = plot_cumulative_performance(results)
+    add_plot_to_pdf(fig_cum, "2. Cumulative Performance")
+
+    fig_weights = plot_weights_over_time(results)
+    add_plot_to_pdf(fig_weights, "3. Asset Allocation Evolution")
+
+    fig_risk = plot_risk_evolution(results)
+    add_plot_to_pdf(fig_risk, "4. Risk Contribution Evolution")
+
+    # 4. Output PDF
+    return pdf.output(dest='S').encode('latin-1')
 def plot_weights_over_time(results):
     df = results["weights_df"]
     fig = px.area(df, x=df.index, y=df.columns)
@@ -647,32 +729,24 @@ with tab2:
         
         st.divider()
         
-        # --- BROWSER PRINT BUTTON ---
-        components.html(
-            """
-            <script>
-            function printPage() {
-                window.parent.print();
-            }
-            </script>
-            <button onclick="printPage()" style="
-                background-color: #FFFFFF; 
-                border: 1px solid #CCCCCC; 
-                color: black; 
-                padding: 10px 20px; 
-                text-align: center; 
-                text-decoration: none; 
-                display: inline-block; 
-                font-size: 16px; 
-                border-radius: 8px; 
-                cursor: pointer; 
-                font-family: 'Times New Roman', serif; 
-                font-weight: bold;">
-                🖨️ Save Report as PDF
-            </button>
-            """,
-            height=60
-        )
+       
+
+st.divider()
+
+if st.button("Generate PDF Report"):
+    with st.spinner("Generating PDF... (This uses Kaleido and might take a moment)"):
+        try:
+            pdf_data = create_pdf_report(res)
+            
+            st.download_button(
+                label="📥 Download PDF Report",
+                data=pdf_data,
+                file_name=f"ERC_Report_{datetime.now().date()}.pdf",
+                mime="application/pdf"
+            )
+        except Exception as e:
+            st.error(f"PDF Generation Error: {e}")
+            st.warning("Ensure 'kaleido==0.2.1' and 'fpdf2' are installed.")
     else: st.info("Run optimization first.")
 
 with tab3:
