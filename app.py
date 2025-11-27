@@ -54,7 +54,7 @@ st.markdown(
     
     /* --- FIXED BANNER HEADER --- */
     header {{
-        position: fixed !important;              /* Force it to stay at the top */
+        position: fixed !important;
         top: 0 !important;
         left: 0 !important;
         right: 0 !important;
@@ -63,42 +63,40 @@ st.markdown(
         background-position: center 45% !important; 
         background-repeat: no-repeat !important;
         height: 8rem !important;                 
-        z-index: 1001 !important;                /* Highest layer */
+        z-index: 1002 !important; /* Highest layer */
         background-color: #FFFFFF !important;
         border-bottom: 1px solid #ccc;
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }}
     
-    /* Hide decoration line */
     header .decoration {{ display: none; }}
     
-    /* Push main content down to clear the fixed header */
+    /* Push content down to reveal banner */
     .block-container {{
-        padding-top: 9rem !important; /* 8rem header + 1rem gap */
+        padding-top: 9rem !important; 
         padding-bottom: 1rem !important;
     }}
-    
-    /* --- STICKY TABS FIX --- */
-    /* 1. Target the Tab List Container */
-    .stTabs [data-baseweb="tab-list"] {{
-        position: sticky !important;
-        position: -webkit-sticky !important;
-        top: 8rem !important;        /* Dock exactly below the 8rem header */
-        z-index: 1000 !important;    /* Float above charts (default z is usually 0-1) */
-        background-color: {LIGHT_BG} !important; /* Solid bg to hide scrolling content */
-        padding-top: 10px;
-        padding-bottom: 10px;
-        margin-bottom: 1rem;
-        border-bottom: 1px solid #E0E0E0;
-        box-shadow: 0 4px 6px -4px rgba(0,0,0,0.1); /* Subtle shadow for depth */
-    }}
-    
-    /* 2. Ensure Parent Containers Allow Sticky (Critical for Streamlit) */
+
+    /* --- ROBUST STICKY TABS --- */
+    /* 1. Allow sticky positioning within the main scroll container */
     [data-testid="stAppViewContainer"] {{
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
+        overflow-x: hidden;
+        overflow-y: auto;
     }}
     
+    /* 2. Target the Tab List and stick it */
+    div[data-baseweb="tab-list"] {{
+        position: sticky !important;
+        position: -webkit-sticky !important; /* Safari */
+        top: 8rem !important; /* Docks right below the 8rem banner */
+        z-index: 999 !important;
+        background-color: {LIGHT_BG} !important; /* White bg hides scrolling content */
+        padding-top: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #E0E0E0;
+        box-shadow: 0 4px 4px -2px rgba(0,0,0,0.05);
+    }}
+
     /* Tab Styling */
     div[data-baseweb="tab-highlight"] {{
         background-color: {TAB_UNDERLINE} !important;
@@ -141,19 +139,16 @@ st.markdown(
         font-family: 'Times New Roman', serif; 
     }}
     
-    /* --- PRINT STYLES (CLEAN PDF) --- */
+    /* --- PRINT STYLES --- */
     @media print {{
-        /* Hide UI elements */
         section[data-testid="stSidebar"], 
         .stButton, 
         iframe, 
         .vfrc-widget--chat,
         header, 
-        /* Hide the Sticky Tabs themselves in PDF (optional, usually looks cleaner without) */
         div[data-baseweb="tab-list"] {{
             display: none !important;
         }}
-        /* Reset layout */
         .block-container {{
             padding-top: 0 !important;
             margin: 0 !important;
@@ -170,7 +165,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- LOGO OVERLAY (FIXED TOP CENTER) ---
+# --- LOGO OVERLAY ---
 if logo_base64:
     st.markdown(
         f"""
@@ -179,7 +174,7 @@ if logo_base64:
             top: 1.5rem; 
             left: 50%;
             transform: translateX(-50%);
-            z-index: 1002; /* Above Header (1001) */
+            z-index: 1003; /* Must be higher than header (1002) and tabs (999) */
             width: 100%;
             text-align: center;
             pointer-events: none;
@@ -297,7 +292,7 @@ def solve_erc_weights(cov_matrix):
     n = cov_matrix.shape[0]
     try:
         w = cp.Variable(n)
-        objective = cp.Minimize(cp.quad_form(w, cov_matrix) - 0.1 * cp.sum(cp.log(w))) # Fixed Rho for speed
+        objective = cp.Minimize(cp.quad_form(w, cov_matrix) - 0.1 * cp.sum(cp.log(w))) # Fixed Rho
         constraints = [cp.sum(w) == 1, w >= 1e-6]
         prob = cp.Problem(objective, constraints)
         try:
@@ -605,7 +600,7 @@ with tab2:
         
         st.divider()
         
-        # --- BROWSER PRINT BUTTON (Cleanest PDF) ---
+        # --- BROWSER PRINT BUTTON ---
         components.html(
             """
             <script>
