@@ -56,7 +56,7 @@ st.markdown(
     /* --- LOGO SIZING (2x Bigger) --- */
     /* Targets the image inside the sidebar header */
     [data-testid="stSidebarHeader"] img {{
-        height: 6rem !important;  /* Standard is usually ~3rem */
+        height: 20rem !important;  /* Standard is usually ~3rem */
         width: auto !important;
         max-width: 100% !important;
     }}
