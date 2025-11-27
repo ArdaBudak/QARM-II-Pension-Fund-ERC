@@ -162,7 +162,7 @@ if logo_base64:
         f"""
         <div style="
             position: fixed; /* Use fixed to stay pinned to the viewport like the header */
-            top: 1rem;       /* Adjust this value to move it up/down within the 8rem banner */
+            top: 3rem;       /* Adjust this value to move it up/down within the 8rem banner */
             left: 50%;
             transform: translateX(-50%);
             z-index: 10000;  /* Extremely high z-index to ensure it's on top of everything */
