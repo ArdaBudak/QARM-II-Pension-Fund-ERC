@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import cvxpy as cp
 import streamlit.components.v1 as components
+from fpdf import FPDF  # Used for the new PDF export
 from scipy.optimize import minimize_scalar
 from datetime import datetime, timedelta
 from pandas.tseries.offsets import MonthEnd
@@ -131,7 +132,6 @@ def get_common_start_date(custom_data, selected_assets, user_start_date):
         st.error(f"Assets not in database: {missing}")
         return None
     
-    # Find the earliest date where ANY of the selected assets has data
     first_valid_series = custom_data[selected_assets].apply(lambda col: col.first_valid_index())
     overall_first_valid = first_valid_series.min()
     
@@ -234,7 +234,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         weights_over_time = {}
         country_exposure_over_time = {}
         total_tc = 0.0
-        last_cov = None # Helper for logging, but we will recalc at end
+        last_cov = None
 
         for j, reb_idx in enumerate(rebalance_indices):
             rebal_date = period_dates[reb_idx]
@@ -249,7 +249,6 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             
             if len(valid_assets_in_window) > 0:
                 try:
-                    # Special Case: 1 Asset
                     if len(valid_assets_in_window) == 1:
                          w_active = np.array([1.0])
                     else:
@@ -262,7 +261,6 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                             idx = selected_assets.index(asset_name)
                             current_weights[idx] = w_val
                 except:
-                    # Fallback 1: Inverse Volatility
                     try:
                         st.warning(f"Solver failed at {rebal_date.date()}. Using Inverse Volatility.")
                         vols = est_window_clean.std()
@@ -272,11 +270,9 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                             idx = selected_assets.index(asset_name)
                             current_weights[idx] = w_val
                     except:
-                         # Fallback 2: Hold previous or cash
                          if np.sum(previous_weights) > 0.9:
                              current_weights = previous_weights
 
-            # Transaction Costs
             if not tx_cost_data.empty:
                 try:
                     if not tx_cost_data.index.is_monotonic_increasing:
@@ -327,39 +323,32 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         cum_port_excess = (1 + port_excess_returns).cumprod()
         max_drawdown = compute_max_drawdown(cum_port_excess)
 
-        # --- FIX FOR RISK CONTRIBUTIONS ---
-        # Re-calculate RC using the final portfolio state and final covariance
         rc_pct = np.zeros(n)
         try:
-            # 1. Find which assets are active in the final portfolio
             active_indices = [i for i, w in enumerate(current_weights) if w > 1e-5]
             active_assets = [selected_assets[i] for i in active_indices]
             active_weights = current_weights[active_indices]
             
             if len(active_assets) > 0:
-                # 2. Get the final lookback window for THESE active assets
                 last_rebal_date = rebalance_indices[-1]
                 global_reb_pos = full_returns.index.get_loc(period_dates[last_rebal_date])
                 start_pos = max(0, global_reb_pos - lookback_months)
                 final_window = full_returns.iloc[start_pos:global_reb_pos][active_assets].dropna(how='any')
                 
-                if final_window.shape[0] > 10: # Ensure we have data
+                if final_window.shape[0] > 10: 
                     lw = LedoitWolf().fit(final_window.values)
                     final_cov = lw.covariance_ * ann_factor
-                    
-                    # 3. Standard RC Calculation
                     port_var = active_weights @ final_cov @ active_weights
                     sigma_p = np.sqrt(port_var)
                     mrc = final_cov @ active_weights
                     rc_abs = active_weights * mrc / sigma_p
                     
-                    # 4. Normalize and Map back to full array
                     if np.sum(rc_abs) > 0:
                         rc_sub_pct = (rc_abs / np.sum(rc_abs)) * 100
                         for i, val in zip(active_indices, rc_sub_pct):
                             rc_pct[i] = val
         except:
-            pass # Keep 0s if calculation fails (safe fallback)
+            pass 
 
         return {
             "selected_assets": selected_assets,
@@ -381,7 +370,47 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         st.error(f"Optimization Error: {e}")
         return None
 
-# --- VISUALIZATION ---
+# --- VISUALIZATION & EXPORT ---
+
+def create_pdf_report(results):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Times", 'B', 16)
+    pdf.cell(0, 10, txt="Pension Fund Optimizer Report", ln=1, align='C')
+    
+    pdf.set_font("Times", size=12)
+    pdf.ln(10)
+    
+    pdf.set_font("Times", 'B', 12)
+    pdf.cell(0, 10, "Key Performance Metrics (Excess Return)", ln=1)
+    pdf.set_font("Times", size=12)
+    
+    metrics = [
+        f"Expected Annual Return: {results['expected_return']:.2f}%",
+        f"Annual Volatility: {results['volatility']:.2f}%",
+        f"Sharpe Ratio: {results['sharpe']:.2f}",
+        f"Max Drawdown: {results['max_drawdown']:.2f}%",
+        f"Total Transaction Costs: {results['total_tc']:.2f}%"
+    ]
+    
+    for m in metrics:
+        pdf.cell(0, 10, m, ln=1)
+        
+    pdf.ln(10)
+    
+    pdf.set_font("Times", 'B', 12)
+    pdf.cell(0, 10, "Current Portfolio Allocation (>1%)", ln=1)
+    pdf.set_font("Times", size=12)
+    
+    assets = results['selected_assets']
+    weights = results['weights']
+    portfolio = sorted(zip(assets, weights), key=lambda x: x[1], reverse=True)
+    
+    for asset, weight in portfolio:
+        if weight > 0.01:
+            pdf.cell(0, 10, f"{asset}: {weight*100:.2f}%", ln=1)
+
+    return pdf.output(dest='S').encode('latin-1')
 
 def plot_final_weights(results):
     df = pd.DataFrame({"Asset": results["selected_assets"], "Weight (%)": results["weights"] * 100})
@@ -459,6 +488,7 @@ def plot_country_exposure_over_time(results):
 tab0, tab1, tab2, tab3 = st.tabs(["How to Use", "Asset Selection", "Portfolio Results", "About Us"])
 
 with tab0:
+    st.title("How to Use")
     # --- EMBEDDED CHATBOT ---
     components.html(
         """
@@ -504,7 +534,6 @@ with tab1:
         
         if start_date < end_date:
             all_assets = custom_data.columns.tolist()
-            # Snap dates for validation
             valid = get_valid_assets(custom_data, start_date, end_date)
             
             col1, col2 = st.columns(2)
@@ -557,6 +586,21 @@ with tab2:
         
         st.subheader("Country Exposure")
         st.plotly_chart(plot_country_exposure_over_time(res), use_container_width=True)
+        
+        st.divider()
+        st.subheader("Download Report")
+        
+        try:
+            pdf_bytes = create_pdf_report(res)
+            st.download_button(
+                label="📄 Download PDF Report",
+                data=pdf_bytes,
+                file_name="portfolio_report.pdf",
+                mime="application/pdf"
+            )
+        except Exception as e:
+            st.error(f"Could not generate PDF: {e}")
+            
     else:
         st.info("Run optimization first.")
 
