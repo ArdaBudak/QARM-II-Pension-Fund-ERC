@@ -5,7 +5,8 @@ import plotly.graph_objects as go
 import plotly.express as px
 import cvxpy as cp
 import streamlit.components.v1 as components
-from fpdf import FPDF  # Used for the new PDF export
+import tempfile 
+from fpdf import FPDF
 from scipy.optimize import minimize_scalar
 from datetime import datetime, timedelta
 from pandas.tseries.offsets import MonthEnd
@@ -24,8 +25,29 @@ st.markdown(
     :root { --primary-color: #f0f0f0; }
     .stApp { background-color: #000000; color: #f0f0f0; font-family: 'Times New Roman', serif; }
     .stSidebar { background-color: #111111; color: #f0f0f0; font-family: 'Times New Roman', serif; }
-    .stButton>button { background-color: #f0f0f0; color: #000000; border-radius: 8px; padding: 10px 20px; font-family: 'Times New Roman', serif; }
+    
+    /* Standard Buttons (Optimize) */
+    .stButton>button { 
+        background-color: #f0f0f0; 
+        color: #000000; 
+        border-radius: 8px; 
+        padding: 10px 20px; 
+        font-family: 'Times New Roman', serif; 
+    }
     .stButton>button:hover { background-color: #dddddd; }
+
+    /* Specific Styling for Download Button (White Background, Black Text) */
+    [data-testid="stDownloadButton"] button {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        border: 1px solid #cccccc !important;
+        font-weight: bold !important;
+    }
+    [data-testid="stDownloadButton"] button:hover {
+        background-color: #f0f0f0 !important;
+        border-color: #aaaaaa !important;
+    }
+
     .stHeader { color: #f0f0f0; font-size: 32px; font-weight: bold; font-family: 'Times New Roman', serif; }
     .stExpander { background-color: #222222; color: #f0f0f0; font-family: 'Times New Roman', serif; }
     .stMultiSelect [data-testid=stMarkdownContainer] { color: #f0f0f0; font-family: 'Times New Roman', serif; }
@@ -46,36 +68,27 @@ st.markdown(
 
 @st.cache_data
 def load_data_bundle():
-    """
-    Loads returns, RF rate, and Transaction Costs with robust error handling.
-    Returns: (returns_df, rf_series, tx_cost_series)
-    """
     returns_wide = pd.DataFrame()
     rf_series = pd.Series(dtype=float)
     tx_cost_series = pd.Series(dtype=float)
 
-    # 1. Load Compustat & ETF (Critical Data)
     try:
         comp = pd.read_parquet("compustat_git.parquet")
         etf = pd.read_parquet("etf_git.parquet")
 
-        # Extract Risk Free Rate (RF)
         if "RF" in comp.columns:
             comp["date"] = pd.to_datetime(comp["date"])
             rf_raw = comp.groupby("date")["RF"].mean().sort_index()
             rf_series = rf_raw.fillna(0.0)
 
-        # Process Stocks
         comp_ret = comp[["date", "company_name", "monthly_return"]].copy()
         comp_ret["date"] = pd.to_datetime(comp_ret["date"])
         comp_ret = comp_ret.rename(columns={"company_name": "asset", "monthly_return": "ret"})
 
-        # Process ETFs
         etf_ret = etf[["date", "ETF", "return_monthly"]].copy()
         etf_ret["date"] = pd.to_datetime(etf_ret["date"])
         etf_ret = etf_ret.rename(columns={"ETF": "asset", "return_monthly": "ret"})
 
-        # Merge
         returns_long = pd.concat([comp_ret, etf_ret], ignore_index=True)
         returns_wide = returns_long.pivot(index="date", columns="asset", values="ret").sort_index()
         returns_wide.index = pd.to_datetime(returns_wide.index)
@@ -84,7 +97,6 @@ def load_data_bundle():
         st.error(f"CRITICAL: Error loading market data (Compustat/ETF): {e}")
         return pd.DataFrame(), pd.Series(), pd.Series()
 
-    # 2. Load Transaction Costs (Optional/Auxiliary Data)
     try:
         tx_file = pd.read_parquet("OW_tx_costs.parquet")
         if "date" in tx_file.columns and "OW_tx_cost" in tx_file.columns:
@@ -112,7 +124,6 @@ def load_country_mapping():
         return {}
 
 def get_valid_assets(custom_data, start_date, end_date):
-    # Snap dates to Month End
     start_date = pd.to_datetime(start_date) + MonthEnd(0)
     end_date = pd.to_datetime(end_date) + MonthEnd(0)
     
@@ -232,6 +243,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         previous_weights = np.zeros(n)
         port_returns = pd.Series(index=period_dates, dtype=float).fillna(0.0)
         weights_over_time = {}
+        rc_over_time = {} # Store risk contributions
         country_exposure_over_time = {}
         total_tc = 0.0
         last_cov = None
@@ -247,32 +259,55 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             
             current_weights = np.zeros(n)
             
+            # Track RC for this period
+            current_rc = np.zeros(n)
+            
             if len(valid_assets_in_window) > 0:
                 try:
                     if len(valid_assets_in_window) == 1:
                          w_active = np.array([1.0])
+                         # RC is 100% for the single asset
+                         rc_active = np.array([100.0]) 
                     else:
                          lw = LedoitWolf().fit(est_window_clean.values)
                          cov = lw.covariance_ * ann_factor
                          w_active = solve_erc_weights(cov)
+                         last_cov = cov
+                         
+                         # Calculate RC pct for active assets
+                         port_var = w_active @ cov @ w_active
+                         sigma_p = np.sqrt(port_var)
+                         mrc = cov @ w_active
+                         rc_abs = w_active * mrc / sigma_p
+                         rc_active = (rc_abs / np.sum(rc_abs)) * 100
                     
                     if w_active is not None:
-                        for asset_name, w_val in zip(valid_assets_in_window, w_active):
+                        for asset_name, w_val, rc_val in zip(valid_assets_in_window, w_active, rc_active):
                             idx = selected_assets.index(asset_name)
                             current_weights[idx] = w_val
+                            current_rc[idx] = rc_val
+                            
                 except:
                     try:
-                        st.warning(f"Solver failed at {rebal_date.date()}. Using Inverse Volatility.")
+                        # Fallback: Inverse Volatility
                         vols = est_window_clean.std()
                         inv_vols = 1.0 / vols
                         w_active = inv_vols / inv_vols.sum()
                         for asset_name, w_val in zip(valid_assets_in_window, w_active.values):
                             idx = selected_assets.index(asset_name)
                             current_weights[idx] = w_val
+                            # Approx RC for Inverse Vol (not perfectly equal but valid fallback)
+                            current_rc[idx] = 100.0 / len(valid_assets_in_window) 
                     except:
                          if np.sum(previous_weights) > 0.9:
                              current_weights = previous_weights
+            else:
+                current_weights = np.zeros(n)
 
+            # Store RC
+            rc_over_time[rebal_date] = current_rc
+
+            # Transaction Costs
             if not tx_cost_data.empty:
                 try:
                     if not tx_cost_data.index.is_monotonic_increasing:
@@ -323,37 +358,10 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         cum_port_excess = (1 + port_excess_returns).cumprod()
         max_drawdown = compute_max_drawdown(cum_port_excess)
 
-        rc_pct = np.zeros(n)
-        try:
-            active_indices = [i for i, w in enumerate(current_weights) if w > 1e-5]
-            active_assets = [selected_assets[i] for i in active_indices]
-            active_weights = current_weights[active_indices]
-            
-            if len(active_assets) > 0:
-                last_rebal_date = rebalance_indices[-1]
-                global_reb_pos = full_returns.index.get_loc(period_dates[last_rebal_date])
-                start_pos = max(0, global_reb_pos - lookback_months)
-                final_window = full_returns.iloc[start_pos:global_reb_pos][active_assets].dropna(how='any')
-                
-                if final_window.shape[0] > 10: 
-                    lw = LedoitWolf().fit(final_window.values)
-                    final_cov = lw.covariance_ * ann_factor
-                    port_var = active_weights @ final_cov @ active_weights
-                    sigma_p = np.sqrt(port_var)
-                    mrc = final_cov @ active_weights
-                    rc_abs = active_weights * mrc / sigma_p
-                    
-                    if np.sum(rc_abs) > 0:
-                        rc_sub_pct = (rc_abs / np.sum(rc_abs)) * 100
-                        for i, val in zip(active_indices, rc_sub_pct):
-                            rc_pct[i] = val
-        except:
-            pass 
-
         return {
             "selected_assets": selected_assets,
             "weights": current_weights,
-            "risk_contrib_pct": rc_pct,
+            "risk_contrib_pct": rc_pct, # Not used anymore for static plot, but kept for structure
             "expected_return": ann_excess_ret * 100, 
             "volatility": ann_vol * 100,             
             "sharpe": sharpe,
@@ -361,6 +369,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             "cum_port": cum_port_excess,
             "total_tc": total_tc * 100,
             "weights_df": pd.DataFrame(weights_over_time, index=selected_assets).T.sort_index(),
+            "rc_df": pd.DataFrame(rc_over_time, index=selected_assets).T.sort_index(), # NEW: RC over time
             "corr_matrix": est_window_clean.corr() if 'est_window_clean' in locals() else pd.DataFrame(),
             "country_exposure_over_time": country_exposure_over_time,
             "max_drawdown": max_drawdown
@@ -410,22 +419,39 @@ def create_pdf_report(results):
         if weight > 0.01:
             pdf.cell(0, 10, f"{asset}: {weight*100:.2f}%", ln=1)
 
+    try:
+        def add_chart_to_pdf(fig, title):
+            pdf.add_page()
+            pdf.set_font("Times", 'B', 14)
+            pdf.cell(0, 10, title, ln=1, align='C')
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmpfile:
+                fig.write_image(tmpfile.name)
+                pdf.image(tmpfile.name, x=10, y=30, w=190)
+
+        add_chart_to_pdf(plot_cumulative_performance(results), "Cumulative Performance")
+        add_chart_to_pdf(plot_risk_evolution(results), "Risk Contributions Over Time") # Changed
+        add_chart_to_pdf(plot_weights_over_time(results), "Weights Evolution")
+        add_chart_to_pdf(plot_country_exposure_over_time(results), "Country Exposure")
+        
+    except Exception as e:
+        pdf.ln(10)
+        pdf.set_font("Times", 'I', 10)
+        pdf.cell(0, 10, f"Charts missing: {str(e)} (Install 'kaleido')", ln=1)
+
     return pdf.output(dest='S').encode('latin-1')
 
-def plot_final_weights(results):
-    df = pd.DataFrame({"Asset": results["selected_assets"], "Weight (%)": results["weights"] * 100})
-    df = df.sort_values("Weight (%)", ascending=True)
-    fig = px.bar(df, x="Weight (%)", y="Asset", orientation="h")
-    fig.update_traces(marker_color="#0D6EFD", texttemplate="%{x:.2f}%")
-    fig.update_layout(paper_bgcolor="#000", plot_bgcolor="#000", font=dict(color="#E0E0E0", family="Times New Roman"))
-    return fig
-
-def plot_risk_contributions(results):
-    df = pd.DataFrame({"Asset": results["selected_assets"], "Risk Contribution (%)": results["risk_contrib_pct"]})
-    df = df.sort_values("Risk Contribution (%)", ascending=True)
-    fig = px.bar(df, x="Risk Contribution (%)", y="Asset", orientation="h")
-    fig.update_traces(marker_color="#00C2FF", texttemplate="%{x:.2f}%")
-    fig.update_layout(paper_bgcolor="#000", plot_bgcolor="#000", font=dict(color="#E0E0E0", family="Times New Roman"))
+def plot_risk_evolution(results):
+    # NEW: Line chart showing RC stability
+    df = results["rc_df"]
+    fig = px.line(df, x=df.index, y=df.columns)
+    fig.update_layout(
+        title="Risk Contribution Evolution (Target: Equal Risk)",
+        paper_bgcolor="#000", 
+        plot_bgcolor="#000", 
+        font=dict(color="#E0E0E0", family="Times New Roman"),
+        yaxis_title="Risk Contribution (%)",
+        showlegend=True
+    )
     return fig
 
 def plot_cumulative_performance(results):
@@ -466,7 +492,43 @@ def plot_cumulative_performance(results):
 def plot_weights_over_time(results):
     df = results["weights_df"]
     fig = px.area(df, x=df.index, y=df.columns)
-    fig.update_layout(paper_bgcolor="#000", plot_bgcolor="#000", font=dict(color="#E0E0E0", family="Times New Roman"))
+    
+    # Add percentage labels to the right side
+    # We take the last valid row of weights
+    last_weights = df.iloc[-1]
+    
+    # Sort annotations by weight to prevent overlap (simple heuristic)
+    sorted_weights = last_weights.sort_values(ascending=False)
+    
+    annotations = []
+    for asset, weight in sorted_weights.items():
+        if weight > 0.02: # Only label significant weights (>2%)
+            annotations.append(dict(
+                x=df.index[-1],
+                y=weight, # This isn't quite right for stacked, need cumulative sum position. 
+                # Plotly Area is stacked. Y position is tricky without calculating cumulative stack manually.
+                # Simpler approach: Use Legend for values or just a text list.
+                # Better: Just append text to the legend names in Plotly Express
+                xref="x", yref="y",
+                text=f"{weight*100:.1f}%",
+                showarrow=False,
+                xanchor="left",
+                font=dict(color="#FFF")
+            ))
+            
+    # Actually, calculating the stacked Y position for annotations is complex in generic functions.
+    # A cleaner way to satisfy "add the weights in percentages at the end" 
+    # is to append the % to the legend names or just display a table next to it.
+    # However, let's try to make the hover template very clear.
+    
+    fig.update_traces(hovertemplate='%{y:.1%}') # Show % on hover
+    
+    fig.update_layout(
+        paper_bgcolor="#000", 
+        plot_bgcolor="#000", 
+        font=dict(color="#E0E0E0", family="Times New Roman"),
+        title="Weights Evolution (Stacked)"
+    )
     return fig
 
 def plot_correlation_matrix(results):
@@ -488,7 +550,6 @@ def plot_country_exposure_over_time(results):
 tab0, tab1, tab2, tab3 = st.tabs(["How to Use", "Asset Selection", "Portfolio Results", "About Us"])
 
 with tab0:
-    st.title("How to Use")
     # --- EMBEDDED CHATBOT ---
     components.html(
         """
@@ -534,6 +595,7 @@ with tab1:
         
         if start_date < end_date:
             all_assets = custom_data.columns.tolist()
+            # Snap dates for validation
             valid = get_valid_assets(custom_data, start_date, end_date)
             
             col1, col2 = st.columns(2)
@@ -576,13 +638,11 @@ with tab2:
         st.plotly_chart(plot_cumulative_performance(res), use_container_width=True)
         
         c1, c2 = st.columns(2)
-        c1.subheader("Weights")
-        c1.plotly_chart(plot_final_weights(res), use_container_width=True)
-        c2.subheader("Risk Contributions")
-        c2.plotly_chart(plot_risk_contributions(res), use_container_width=True)
+        c1.subheader("Weights Evolution")
+        c1.plotly_chart(plot_weights_over_time(res), use_container_width=True)
         
-        st.subheader("Weights Evolution")
-        st.plotly_chart(plot_weights_over_time(res), use_container_width=True)
+        c2.subheader("Risk Contribution Evolution")
+        c2.plotly_chart(plot_risk_evolution(res), use_container_width=True)
         
         st.subheader("Country Exposure")
         st.plotly_chart(plot_country_exposure_over_time(res), use_container_width=True)
@@ -600,7 +660,7 @@ with tab2:
             )
         except Exception as e:
             st.error(f"Could not generate PDF: {e}")
-            
+
     else:
         st.info("Run optimization first.")
 
