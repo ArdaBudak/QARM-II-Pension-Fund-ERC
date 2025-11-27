@@ -52,41 +52,20 @@ st.markdown(
         font-family: 'Times New Roman', serif;
     }}
     
-    /* --- FIXED BANNER HEADER WITH LOGO --- */
+    /* --- FIXED BANNER HEADER --- */
     header {{
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
         right: 0 !important;
-        /* Banner Image */
         background-image: url("data:image/jpg;base64,{banner_base64}") !important;
-        background-size: cover !important;        
+        background-size: cover !important;       
         background-position: center 45% !important; 
         background-repeat: no-repeat !important;
-        height: 8rem !important;                  
+        height: 8rem !important;                 
         z-index: 1001 !important;
         background-color: #FFFFFF !important;
         border-bottom: 1px solid #ccc;
-    }}
-
-    /* --- LOGO INJECTION via CSS (Prevents Flickering) --- */
-    header::after {{
-        content: "";
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%); /* Centers the logo perfectly */
-        width: 80%;       /* Adjust width as needed */
-        max-width: 300px; /* Max width constraint */
-        height: 80%;      /* Height constraint relative to header */
-        
-        /* The Logo Image */
-        background-image: url("data:image/png;base64,{logo_base64}");
-        background-size: contain;
-        background-repeat: no-repeat;
-        background-position: center;
-        z-index: 1002;
-        pointer-events: none; /* Allows clicking through the logo if needed */
     }}
     
     header .decoration {{ display: none; }}
@@ -97,12 +76,108 @@ st.markdown(
         padding-bottom: 1rem !important;
     }}
     
-    /* ... (Keep the rest of your CSS for tabs, sidebar, buttons unchanged) ... */
+    /* --- ROBUST STICKY TABS --- */
+    [data-testid="stAppViewContainer"] {{
+        overflow-x: hidden;
+        overflow-y: auto;
+    }}
     
+    div[data-baseweb="tab-list"] {{
+        position: -webkit-sticky !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 999 !important;
+        background-color: {LIGHT_BG} !important;
+        padding-top: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #E0E0E0;
+        box-shadow: 0 4px 4px -2px rgba(0,0,0,0.05);
+    }}
+
+    div[data-baseweb="tab-highlight"] {{
+        background-color: {TAB_UNDERLINE} !important;
+    }}
+    div[data-baseweb="tab-list"] button {{
+        font-family: 'Times New Roman', serif !important;
+        font-weight: bold !important;
+    }}
+
+    .stSidebar {{ background-color: {SIDEBAR_BG}; }}
+    section[data-testid="stSidebar"] {{ background-color: {SIDEBAR_BG}; color: {TEXT_COLOR}; }}
+
+    .stButton>button {{ 
+        background-color: {BUTTON_COLOR}; 
+        color: {BUTTON_TEXT}; 
+        border-radius: 8px; 
+        padding: 10px 24px; 
+        font-family: 'Times New Roman', serif; 
+        border: 1px solid #CCCCCC;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }}
+    .stButton>button:hover {{ 
+        background-color: #D5D5D5; 
+        border-color: #999999;
+    }}
+
+    span[data-baseweb="tag"] {{
+        background-color: #E8E8E8 !important;
+        color: {TEXT_COLOR} !important;
+        border: 1px solid #d0d0d0;
+    }}
+
+    h1, h2, h3, h4, h5, h6, .stHeader, p, label, span, div {{ 
+        color: {TEXT_COLOR} !important; 
+        font-family: 'Times New Roman', serif; 
+    }}
+    
+    @media print {{
+        section[data-testid="stSidebar"], 
+        .stButton, 
+        iframe, 
+        .vfrc-widget--chat,
+        header, 
+        div[data-baseweb="tab-list"] {{
+            display: none !important;
+        }}
+        .block-container {{
+            padding-top: 0 !important;
+            margin: 0 !important;
+        }}
+        .stApp {{
+            background-color: white !important;
+        }}
+        .js-plotly-plot {{
+            break-inside: avoid;
+        }}
+    }}
     </style>
     """,
     unsafe_allow_html=True
 )
+
+# --- LOGO HANDLING (OVERLAY ON BANNER) ---
+if logo_base64:
+    st.markdown(
+        f"""
+        <div style="
+            position: fixed; /* Use fixed to stay pinned to the viewport like the header */
+            top: 1.5rem;       /* Adjust this value to move it up/down within the 8rem banner */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10000;  /* Extremely high z-index to ensure it's on top of everything */
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+        ">
+            <img src="data:image/png;base64,{logo_base64}" 
+                 style="max-width: 300px; width: 80%; height: auto; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+else:
+    st.warning("Logo not found.")
 
 # --- DATA LOADING ---
 @st.cache_data
