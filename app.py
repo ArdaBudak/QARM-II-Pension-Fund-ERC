@@ -179,10 +179,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- (OLD LOGO BLOCK REMOVED HERE) ---
-# The logic that used to be here ("if logo_base64: st.markdown...") 
-# has been moved into the CSS above.
-
 # --- DATA LOADING ---
 @st.cache_data
 def load_data_bundle():
@@ -328,29 +324,6 @@ def solve_erc_weights(cov_matrix):
     except Exception as e:
         # Log the error if needed
         # st.write(f"Solver Error: {e}")
-        return None
-
-    def rc_variance(rho):
-        w = solve_with_rho(rho)
-        if w is None: return np.inf
-        var = w @ cov_matrix @ w
-        sigma = np.sqrt(var)
-        if sigma <= 0: return np.inf
-        mrc = cov_matrix @ w
-        rc = w * mrc / sigma
-        # Target: All RC should be equal. Minimize Variance(RC).
-        return np.var(rc)
-
-    try:
-        # Numerical search for optimal Rho (Diversity Factor)
-        res = minimize_scalar(rc_variance, bounds=(1e-6, 1e-1), method="bounded", tol=1e-5)
-        w_star = solve_with_rho(res.x)
-        
-        if w_star is None: raise RuntimeError("ERC Solver Failed")
-        w_star = np.where(np.abs(w_star) < 1e-6, 0, w_star)
-        w_star /= w_star.sum()
-        return w_star
-    except:
         return None
 
 def compute_max_drawdown(cumulative_returns):
@@ -546,7 +519,29 @@ def plot_cumulative_performance(results):
     )
     return fig
 
+def plot_weights_over_time(results):
+    df = results["weights_df"]
+    fig = px.area(df, x=df.index, y=df.columns)
+    fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font=dict(color="black", family="Times New Roman"), title="Weights Evolution (Stacked)", height=500, template="plotly_white")
+    return fig
 
+def plot_risk_evolution(results):
+    if "rc_df" not in results: return go.Figure()
+    df = results["rc_df"]
+    fig = px.line(df, x=df.index, y=df.columns)
+    fig.update_layout(title="Risk Contribution Evolution (Target: Equal Risk)", paper_bgcolor="white", plot_bgcolor="white", font=dict(color="black", family="Times New Roman"), yaxis_title="Risk Contribution (%)", height=500, template="plotly_white")
+    return fig
+
+def plot_country_exposure_over_time(results):
+    df = pd.DataFrame(results["country_exposure_over_time"]).T
+    df.index = pd.to_datetime(df.index)
+    fig = go.Figure()
+    for country in df.columns:
+        fig.add_trace(go.Scatter(x=df.index, y=df[country]*100, mode="lines", name=str(country)))
+    fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font=dict(color="black", family="Times New Roman"), yaxis_title="Exposure (%)", height=500, template="plotly_white")
+    return fig
+
+# --- PDF GENERATION ---
 def create_pdf_report(results):
     """
     Generates a professional PDF report using FPDF2 and Kaleido.
@@ -608,13 +603,7 @@ def create_pdf_report(results):
         with io.BytesIO(img_bytes) as img_stream:
             pdf.image(img_stream, x=10, w=190) # w=190 fits A4 width nicely
 
-    # Re-create figures for the report (or pass them if you stored the fig objects)
-    # Note: In your current code, you generate figs inside the UI functions. 
-    # Ideally, your perform_optimization should return the FIGURE OBJECTS, not just dataframes.
-    # Assuming you update perform_optimization to return 'fig_cum', 'fig_weights', etc.:
-    
     # FOR DEMONSTRATION: Re-generating the charts here based on results
-    # (In production, generate these once and pass them in)
     fig_cum = plot_cumulative_performance(results)
     add_plot_to_pdf(fig_cum, "2. Cumulative Performance")
 
@@ -626,27 +615,6 @@ def create_pdf_report(results):
 
     # 4. Output PDF
     return pdf.output(dest='S').encode('latin-1')
-def plot_weights_over_time(results):
-    df = results["weights_df"]
-    fig = px.area(df, x=df.index, y=df.columns)
-    fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font=dict(color="black", family="Times New Roman"), title="Weights Evolution (Stacked)", height=500, template="plotly_white")
-    return fig
-
-def plot_risk_evolution(results):
-    if "rc_df" not in results: return go.Figure()
-    df = results["rc_df"]
-    fig = px.line(df, x=df.index, y=df.columns)
-    fig.update_layout(title="Risk Contribution Evolution (Target: Equal Risk)", paper_bgcolor="white", plot_bgcolor="white", font=dict(color="black", family="Times New Roman"), yaxis_title="Risk Contribution (%)", height=500, template="plotly_white")
-    return fig
-
-def plot_country_exposure_over_time(results):
-    df = pd.DataFrame(results["country_exposure_over_time"]).T
-    df.index = pd.to_datetime(df.index)
-    fig = go.Figure()
-    for country in df.columns:
-        fig.add_trace(go.Scatter(x=df.index, y=df[country]*100, mode="lines", name=str(country)))
-    fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font=dict(color="black", family="Times New Roman"), yaxis_title="Exposure (%)", height=500, template="plotly_white")
-    return fig
 
 # --- MAIN APP LAYOUT ---
 
@@ -728,26 +696,23 @@ with tab2:
         st.plotly_chart(plot_country_exposure_over_time(res), use_container_width=True)
         
         st.divider()
-        
-       
 
-st.divider()
-
-if st.button("Generate PDF Report"):
-    with st.spinner("Generating PDF... (This uses Kaleido and might take a moment)"):
-        try:
-            pdf_data = create_pdf_report(res)
-            
-            st.download_button(
-                label="📥 Download PDF Report",
-                data=pdf_data,
-                file_name=f"ERC_Report_{datetime.now().date()}.pdf",
-                mime="application/pdf"
-            )
-        except Exception as e:
-            st.error(f"PDF Generation Error: {e}")
-            st.warning("Ensure 'kaleido==0.2.1' and 'fpdf2' are installed.")
-    
+        if st.button("Generate PDF Report"):
+            with st.spinner("Generating PDF... (This uses Kaleido and might take a moment)"):
+                try:
+                    pdf_data = create_pdf_report(res)
+                    
+                    st.download_button(
+                        label="📥 Download PDF Report",
+                        data=pdf_data,
+                        file_name=f"ERC_Report_{datetime.now().date()}.pdf",
+                        mime="application/pdf"
+                    )
+                except Exception as e:
+                    st.error(f"PDF Generation Error: {e}")
+                    st.warning("Ensure 'kaleido==0.2.1' and 'fpdf2' are installed.")
+    else:
+        st.info("Run optimization first.")
 
 with tab3:
     st.title("About Us")
