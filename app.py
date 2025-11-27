@@ -674,7 +674,7 @@ with tab0:
     )
 
 with tab1:
-    st.title("Asset Selection")
+    
     custom_data, rf_data, tx_cost_data = load_data_bundle()
     if custom_data.empty:
         st.error("Data error.")
@@ -703,7 +703,7 @@ with tab1:
         else: st.error("End Date must be after Start Date.")
 
 with tab2:
-    st.title("Portfolio Results")
+    
     if "results" in st.session_state:
         res = st.session_state.results
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -742,7 +742,7 @@ with tab2:
         st.info("Run optimization first.")
 
 with tab3:
-    st.title("Monte Carlo Simulation")
+    
     st.write("This simulation projects 10 years into the future using Historical Bootstrap based on your portfolio's assets history.")
     
     if "results" in st.session_state:
@@ -790,7 +790,7 @@ with tab3:
         st.info("Please optimize a portfolio in the 'Asset Selection' tab first to enable simulations.")
 
 with tab4:
-    st.title("About Us")
+    
     st.write("""
     Welcome to the Pension Fund Optimizer!
 
