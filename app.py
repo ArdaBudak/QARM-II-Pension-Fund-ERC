@@ -36,7 +36,7 @@ st.markdown(
     }
     .stButton>button:hover { background-color: #dddddd; }
 
-    /* Specific Styling for Download Button (White Background, Black Text) */
+    /* Specific Styling for Download Button */
     [data-testid="stDownloadButton"] button {
         background-color: #FFFFFF !important;
         color: #000000 !important;
@@ -208,8 +208,9 @@ def compute_max_drawdown(cumulative_returns):
     drawdowns = (cumulative_returns - running_max) / running_max
     return drawdowns.min() * 100
 
+# Added _version to force cache refresh
 @st.cache_data(show_spinner=True)
-def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12):
+def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=2):
     custom_data = _custom_data 
     rf_data = _rf_data
     tx_cost_data = _tx_cost_data
@@ -243,10 +244,12 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         previous_weights = np.zeros(n)
         port_returns = pd.Series(index=period_dates, dtype=float).fillna(0.0)
         weights_over_time = {}
-        rc_over_time = {} # Store risk contributions
+        rc_over_time = {} 
         country_exposure_over_time = {}
         total_tc = 0.0
-        last_cov = None
+        
+        # Initialize to zero to avoid reference error if loop fails
+        rc_pct = np.zeros(n) 
 
         for j, reb_idx in enumerate(rebalance_indices):
             rebal_date = period_dates[reb_idx]
@@ -258,21 +261,17 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             valid_assets_in_window = est_window_clean.columns.tolist()
             
             current_weights = np.zeros(n)
-            
-            # Track RC for this period
             current_rc = np.zeros(n)
             
             if len(valid_assets_in_window) > 0:
                 try:
                     if len(valid_assets_in_window) == 1:
                          w_active = np.array([1.0])
-                         # RC is 100% for the single asset
                          rc_active = np.array([100.0]) 
                     else:
                          lw = LedoitWolf().fit(est_window_clean.values)
                          cov = lw.covariance_ * ann_factor
                          w_active = solve_erc_weights(cov)
-                         last_cov = cov
                          
                          # Calculate RC pct for active assets
                          port_var = w_active @ cov @ w_active
@@ -296,7 +295,6 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                         for asset_name, w_val in zip(valid_assets_in_window, w_active.values):
                             idx = selected_assets.index(asset_name)
                             current_weights[idx] = w_val
-                            # Approx RC for Inverse Vol (not perfectly equal but valid fallback)
                             current_rc[idx] = 100.0 / len(valid_assets_in_window) 
                     except:
                          if np.sum(previous_weights) > 0.9:
@@ -304,8 +302,8 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             else:
                 current_weights = np.zeros(n)
 
-            # Store RC
             rc_over_time[rebal_date] = current_rc
+            rc_pct = current_rc # Update final RC for bar chart
 
             # Transaction Costs
             if not tx_cost_data.empty:
@@ -361,7 +359,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         return {
             "selected_assets": selected_assets,
             "weights": current_weights,
-            "risk_contrib_pct": rc_pct, # Not used anymore for static plot, but kept for structure
+            "risk_contrib_pct": rc_pct,
             "expected_return": ann_excess_ret * 100, 
             "volatility": ann_vol * 100,             
             "sharpe": sharpe,
@@ -369,7 +367,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             "cum_port": cum_port_excess,
             "total_tc": total_tc * 100,
             "weights_df": pd.DataFrame(weights_over_time, index=selected_assets).T.sort_index(),
-            "rc_df": pd.DataFrame(rc_over_time, index=selected_assets).T.sort_index(), # NEW: RC over time
+            "rc_df": pd.DataFrame(rc_over_time, index=selected_assets).T.sort_index(),
             "corr_matrix": est_window_clean.corr() if 'est_window_clean' in locals() else pd.DataFrame(),
             "country_exposure_over_time": country_exposure_over_time,
             "max_drawdown": max_drawdown
@@ -429,7 +427,7 @@ def create_pdf_report(results):
                 pdf.image(tmpfile.name, x=10, y=30, w=190)
 
         add_chart_to_pdf(plot_cumulative_performance(results), "Cumulative Performance")
-        add_chart_to_pdf(plot_risk_evolution(results), "Risk Contributions Over Time") # Changed
+        add_chart_to_pdf(plot_risk_evolution(results), "Risk Contributions Over Time") 
         add_chart_to_pdf(plot_weights_over_time(results), "Weights Evolution")
         add_chart_to_pdf(plot_country_exposure_over_time(results), "Country Exposure")
         
@@ -441,7 +439,10 @@ def create_pdf_report(results):
     return pdf.output(dest='S').encode('latin-1')
 
 def plot_risk_evolution(results):
-    # NEW: Line chart showing RC stability
+    # Check if rc_df exists (backward compatibility safety)
+    if "rc_df" not in results:
+        return go.Figure()
+    
     df = results["rc_df"]
     fig = px.line(df, x=df.index, y=df.columns)
     fig.update_layout(
@@ -492,37 +493,7 @@ def plot_cumulative_performance(results):
 def plot_weights_over_time(results):
     df = results["weights_df"]
     fig = px.area(df, x=df.index, y=df.columns)
-    
-    # Add percentage labels to the right side
-    # We take the last valid row of weights
-    last_weights = df.iloc[-1]
-    
-    # Sort annotations by weight to prevent overlap (simple heuristic)
-    sorted_weights = last_weights.sort_values(ascending=False)
-    
-    annotations = []
-    for asset, weight in sorted_weights.items():
-        if weight > 0.02: # Only label significant weights (>2%)
-            annotations.append(dict(
-                x=df.index[-1],
-                y=weight, # This isn't quite right for stacked, need cumulative sum position. 
-                # Plotly Area is stacked. Y position is tricky without calculating cumulative stack manually.
-                # Simpler approach: Use Legend for values or just a text list.
-                # Better: Just append text to the legend names in Plotly Express
-                xref="x", yref="y",
-                text=f"{weight*100:.1f}%",
-                showarrow=False,
-                xanchor="left",
-                font=dict(color="#FFF")
-            ))
-            
-    # Actually, calculating the stacked Y position for annotations is complex in generic functions.
-    # A cleaner way to satisfy "add the weights in percentages at the end" 
-    # is to append the % to the legend names or just display a table next to it.
-    # However, let's try to make the hover template very clear.
-    
-    fig.update_traces(hovertemplate='%{y:.1%}') # Show % on hover
-    
+    fig.update_traces(hovertemplate='%{y:.1%}') 
     fig.update_layout(
         paper_bgcolor="#000", 
         plot_bgcolor="#000", 
@@ -666,61 +637,4 @@ with tab2:
 
 with tab3:
     st.title("About Us")
-    st.write("""
-    Welcome to the Pension Fund Optimizer!
-
-    We are a dedicated team of financial experts and developers passionate about helping individuals and institutions optimize their pension funds for maximum efficiency and risk management.
-
-    Our tool uses advanced optimization techniques, specifically Dynamic Equal Risk Contribution (ERC) with annual rebalancing, to create balanced portfolios that aim to equalize the risk contributions from each asset over time.
-
-    Built with Streamlit and powered by open-source libraries, this app provides an intuitive interface for selecting assets, analyzing historical data, and visualizing results.
-
-    If you have any questions or feedback, feel free to reach out at support@pensionoptimizer.com.
-
-    Thank you for using our tool! 🎉
-    """)
-
-    st.markdown("---")
-    st.markdown("## 👥 Meet the Team")
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    team = [
-        {
-            "name": "Lucas Jaccard",
-            "role": "Frontend Developer",
-            "desc": "Lucas designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas_JACCARD.JPG"
-        },
-        {
-            "name": "Audrey Champion",
-            "role": "Financial Engineer",
-            "desc": "Audrey focuses on translating theory into practice, helping design the pension fund strategy and ensuring academic rigor in implementation.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey_CHAMPION.JPG"
-        },
-        {
-            "name": "Arda Budak",
-            "role": "Quantitative Analyst",
-            "desc": "Arda applies quantitative methods and stochastic simulations to enhance risk control and portfolio diversification within the project.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda_BUDAK.JPG"
-        },
-        {
-            "name": "Rihem Rhaiem",
-            "role": "Data Scientist",
-            "desc": "Rihem specializes in financial data analytics and portfolio optimization models, contributing quantitative insight to the ERC framework.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem_RHAIEM.JPG"
-        },
-        {
-            "name": "Edward Arion",
-            "role": "Backend Developer",
-            "desc": "Edward ensures computational stability and performance, integrating optimization algorithms efficiently within the Streamlit app.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward_ARION.JPG"
-        },
-    ]
-
-    cols = st.columns(len(team))
-    for i, member in enumerate(team):
-        with cols[i]:
-            st.image(member["photo"], width=150)
-            st.markdown(f"### {member['name']}")
-            st.markdown(f"**{member['role']}**")
-            st.write(member["desc"])
+    st.write("Pension Fund Optimizer Team.")
