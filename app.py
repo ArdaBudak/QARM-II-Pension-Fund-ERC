@@ -6,6 +6,7 @@ import plotly.express as px
 import cvxpy as cp
 import streamlit.components.v1 as components
 import tempfile 
+import base64
 from fpdf import FPDF
 from scipy.optimize import minimize_scalar
 from datetime import datetime, timedelta
@@ -48,28 +49,6 @@ st.markdown(
         background-color: {SIDEBAR_BG};
         color: {TEXT_COLOR};
     }}
-
-    # --- LOGO HANDLING (Base64 Method for Perfect Centering) ---
-def get_base64_of_bin_file(bin_file):
-    with open(bin_file, 'rb') as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
-
-try:
-    # Load and encode the image
-    img_base64 = get_base64_of_bin_file("ERC Portfolio.png")
-    
-    # Inject into Sidebar with Flexbox centering
-    st.sidebar.markdown(
-        f"""
-        <div style="display: flex; justify-content: center; align-items: center; margin-top: 10px; margin-bottom: 30px;">
-            <img src="data:image/png;base64,{img_base64}" width="250" style="max-width: 100%;">
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-except Exception as e:
-    st.sidebar.warning(f"Logo not found: {e}")
 
     /* --- BUTTONS (Optimize) --- */
     .stButton>button {{ 
@@ -145,9 +124,27 @@ except Exception as e:
     unsafe_allow_html=True
 )
 
-# --- SIDEBAR LOGO ---
-with st.sidebar:
-    st.image("ERC Portfolio.png") # CSS above handles the centering and sizing
+# --- LOGO HANDLING (Base64 Method for Perfect Centering) ---
+def get_base64_of_bin_file(bin_file):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+try:
+    # Load and encode the image
+    img_base64 = get_base64_of_bin_file("ERC Portfolio.png")
+    
+    # Inject into Sidebar with Flexbox centering
+    st.sidebar.markdown(
+        f"""
+        <div style="display: flex; justify-content: center; align-items: center; margin-top: 20px; margin-bottom: 40px;">
+            <img src="data:image/png;base64,{img_base64}" width="280" style="max-width: 90%;">
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+except Exception as e:
+    st.sidebar.warning(f"Logo not found: {e}")
 
 # --- DATA LOADING FUNCTIONS ---
 
@@ -698,6 +695,7 @@ with tab0:
         height=850, 
         scrolling=False
     )
+
 with tab1:
     st.title("Asset Selection")
     custom_data, rf_data, tx_cost_data = load_data_bundle()
