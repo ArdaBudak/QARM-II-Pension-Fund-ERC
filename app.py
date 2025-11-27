@@ -512,8 +512,8 @@ def plot_cumulative_performance(results):
     else: nice_dtick = 1
 
     fig.update_layout(
-        title="Cumulative Excess Return (Log Scale)", paper_bgcolor="white", plot_bgcolor="white",
-        font=dict(color="black", family="Times New Roman"), yaxis_title="Growth of $1 (Log)",
+        ="Cumulative Excess Return (Log Scale)", paper_bgcolor="white", plot_bgcolor="white",
+        font=dict(color="black", family="Times New Roman"), yaxis_="Growth of $1 (Log)",
         yaxis=dict(type="log", dtick=nice_dtick, tickformat=".2f", minor=dict(showgrid=False)),
         height=650, template="plotly_white"
     )
@@ -522,14 +522,14 @@ def plot_cumulative_performance(results):
 def plot_weights_over_time(results):
     df = results["weights_df"]
     fig = px.area(df, x=df.index, y=df.columns)
-    fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font=dict(color="black", family="Times New Roman"), title="Weights Evolution (Stacked)", height=500, template="plotly_white")
+    fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font=dict(color="black", family="Times New Roman"), ="Weights Evolution (Stacked)", height=500, template="plotly_white")
     return fig
 
 def plot_risk_evolution(results):
     if "rc_df" not in results: return go.Figure()
     df = results["rc_df"]
     fig = px.line(df, x=df.index, y=df.columns)
-    fig.update_layout(title="Risk Contribution Evolution (Target: Equal Risk)", paper_bgcolor="white", plot_bgcolor="white", font=dict(color="black", family="Times New Roman"), yaxis_title="Risk Contribution (%)", height=500, template="plotly_white")
+    fig.update_layout(="Risk Contribution Evolution (Target: Equal Risk)", paper_bgcolor="white", plot_bgcolor="white", font=dict(color="black", family="Times New Roman"), yaxis_="Risk Contribution (%)", height=500, template="plotly_white")
     return fig
 
 def plot_country_exposure_over_time(results):
@@ -538,7 +538,7 @@ def plot_country_exposure_over_time(results):
     fig = go.Figure()
     for country in df.columns:
         fig.add_trace(go.Scatter(x=df.index, y=df[country]*100, mode="lines", name=str(country)))
-    fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font=dict(color="black", family="Times New Roman"), yaxis_title="Exposure (%)", height=500, template="plotly_white")
+    fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font=dict(color="black", family="Times New Roman"), yaxis_="Exposure (%)", height=500, template="plotly_white")
     return fig
 
 # --- PDF GENERATION ---
@@ -590,10 +590,10 @@ def create_pdf_report(results):
 
     # 3. Add Charts
     # Helper to convert Plotly fig to Image Bytes
-    def add_plot_to_pdf(fig, title):
+    def add_plot_to_pdf(fig, ):
         pdf.add_page()
         pdf.set_font("Helvetica", 'B', 14)
-        pdf.cell(0, 10, title, ln=True)
+        pdf.cell(0, 10, , ln=True)
         pdf.ln(5)
         
         # Convert Plotly to PNG bytes using Kaleido
@@ -647,7 +647,7 @@ with tab0:
     )
 
 with tab1:
-    st.title("Asset Selection")
+    
     custom_data, rf_data, tx_cost_data = load_data_bundle()
     if custom_data.empty:
         st.error("Data error.")
@@ -676,7 +676,7 @@ with tab1:
         else: st.error("End Date must be after Start Date.")
 
 with tab2:
-    st.title("Portfolio Results")
+   
     if "results" in st.session_state:
         res = st.session_state.results
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -715,7 +715,7 @@ with tab2:
         st.info("Run optimization first.")
 
 with tab3:
-    st.title("About Us")
+    
     st.write("""
     Welcome to the Pension Fund Optimizer!
 
