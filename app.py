@@ -630,8 +630,7 @@ with tab2:
 
 with tab3:
    
-    with tab3:
-    st.title("About Us")
+   
     st.write("""
     Welcome to the Pension Fund Optimizer!
 
