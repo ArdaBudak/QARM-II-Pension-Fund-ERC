@@ -5,7 +5,6 @@ plotly
 cvxpy
 scipy
 ecos
-fpdf
 scikit-learn
 fpdf2
 kaleido==0.2.1
