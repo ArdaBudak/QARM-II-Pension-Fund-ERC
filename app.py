@@ -33,6 +33,7 @@ def get_base64_of_bin_file(bin_file):
     except:
         return ""
 
+# Encode images for CSS injection
 banner_base64 = get_base64_of_bin_file("Gray-Manhattan-Morning-Wallpaper-Mural.jpg")
 logo_base64 = get_base64_of_bin_file("ERC Portfolio.png")
 
@@ -55,30 +56,39 @@ st.markdown(
     }}
     
     /* --- CUSTOM BANNER HEADER --- */
+    /* This targets the top fixed header bar in Streamlit */
     header {{
         background-image: url("data:image/jpg;base64,{banner_base64}") !important;
         background-size: cover !important;       
-        background-position: center 45% !important; 
+        background-position: center 45% !important; /* Focus on middle */
         background-repeat: no-repeat !important;
         height: 8rem !important;                 
         z-index: 1 !important;
+        background-color: #FFFFFF !important; /* Fallback */
+    }}
+    
+    /* Hide the default Streamlit decoration bar (the colored line) */
+    header .decoration {{
+        display: none;
     }}
     
     /* Push content down to reveal the banner */
     .block-container {{
-        padding-top: 6rem !important; 
+        padding-top: 9rem !important; /* Enough space for banner + spacing */
         padding-bottom: 1rem !important;
     }}
     
     /* --- STICKY TABS IMPLEMENTATION --- */
-    /* This targets the container holding the tabs */
-    .stTabs [data-baseweb="tab-list"] {{
+    /* Targets the tab container list */
+    div[data-baseweb="tab-list"] {{
         position: sticky !important;
-        top: 8rem !important; /* Height of your banner header */
-        z-index: 999 !important; /* Above charts, below logo overlay */
-        background-color: {LIGHT_BG} !important; /* Opaque bg so text doesn't overlap */
-        padding-top: 10px;
-        box-shadow: 0 4px 2px -2px rgba(0,0,0,0.1); /* Subtle shadow */
+        top: 8rem !important; /* Matches header height */
+        z-index: 990 !important; /* Above content, below logo overlay */
+        background-color: {LIGHT_BG} !important;
+        padding-top: 1rem;
+        padding-bottom: 0.5rem;
+        margin-top: -1rem; /* Pull up slightly to lock in */
+        border-bottom: 1px solid #E0E0E0;
     }}
 
     /* Sidebar Background */
@@ -93,9 +103,6 @@ st.markdown(
     /* --- TAB UNDERLINE FIX --- */
     div[data-baseweb="tab-highlight"] {{
         background-color: {TAB_UNDERLINE} !important;
-    }}
-    div[data-baseweb="tab-list"] {{
-        border-bottom-color: #E0E0E0 !important;
     }}
 
     /* --- BUTTONS (Optimize) --- */
@@ -174,11 +181,12 @@ st.markdown(
 
 # --- LOGO HANDLING (OVERLAY ON BANNER) ---
 if logo_base64:
+    # This overlay sits ON TOP of the sticky header
     st.markdown(
         f"""
         <div style="
             position: fixed;
-            top: 1.5rem; 
+            top: 1rem; 
             left: 50%;
             transform: translateX(-50%);
             z-index: 999999; 
