@@ -40,10 +40,16 @@ st.markdown(
         color: {TEXT_COLOR};
         font-family: 'Times New Roman', serif;
     }}
-
-    /* --- CRITICAL FIX: Reduce Top Whitespace --- */
+    
+    /* --- FIX: Make Native Header Transparent so Logo shows through --- */
+    header {{
+        background-color: transparent !important;
+        z-index: 1 !important; /* Lower than the logo */
+    }}
+    
+    /* Reduce top white space */
     .block-container {{
-        padding-top: 1rem !important; /* Pulls content up */
+        padding-top: 2rem !important; 
         padding-bottom: 1rem !important;
     }}
     
@@ -140,6 +146,7 @@ try:
     img_base64 = get_base64_of_bin_file("ERC Portfolio.png")
     
     # Inject HTML Div at the top of the main container
+    # FIX: Added z-index and relative positioning to force it above the native header
     st.markdown(
         f"""
         <div style="
@@ -147,7 +154,9 @@ try:
             justify-content: center; 
             align-items: center; 
             width: 100%; 
-            padding-top: 0px;  /* Reduced from 10px to 0 */
+            position: relative; 
+            z-index: 999999;  /* Forces logo above Streamlit UI */
+            margin-top: -30px; /* Pulls it up into the empty header space */
             padding-bottom: 20px;
         ">
             <img src="data:image/png;base64,{img_base64}" 
@@ -158,7 +167,6 @@ try:
     )
 except Exception as e:
     st.warning(f"Logo not found: {e}")
-
 # --- DATA LOADING FUNCTIONS ---
 
 @st.cache_data
