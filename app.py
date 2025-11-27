@@ -52,9 +52,9 @@ st.markdown(
         font-family: 'Times New Roman', serif;
     }}
     
-    /* --- FIXED BANNER HEADER --- */
+    /* --- SCROLLING BANNER HEADER (Not Fixed) --- */
     header {{
-        position: fixed !important;
+        position: absolute !important;           /* Changed from fixed to absolute so it scrolls away */
         top: 0 !important;
         left: 0 !important;
         right: 0 !important;
@@ -63,34 +63,31 @@ st.markdown(
         background-position: center 45% !important; 
         background-repeat: no-repeat !important;
         height: 8rem !important;                 
-        z-index: 1002 !important; /* Highest layer */
+        z-index: 1001 !important;
         background-color: #FFFFFF !important;
         border-bottom: 1px solid #ccc;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }}
     
     header .decoration {{ display: none; }}
     
-    /* Push content down to reveal banner */
+    /* --- REDUCED GAP --- */
     .block-container {{
-        padding-top: 9rem !important; 
+        padding-top: 8rem !important; /* Reduced from 9rem to remove gap */
         padding-bottom: 1rem !important;
     }}
-
+    
     /* --- ROBUST STICKY TABS --- */
-    /* 1. Allow sticky positioning within the main scroll container */
     [data-testid="stAppViewContainer"] {{
         overflow-x: hidden;
         overflow-y: auto;
     }}
     
-    /* 2. Target the Tab List and stick it */
     div[data-baseweb="tab-list"] {{
         position: sticky !important;
-        position: -webkit-sticky !important; /* Safari */
-        top: 8rem !important; /* Docks right below the 8rem banner */
+        position: -webkit-sticky !important;
+        top: 0 !important;           /* Now sticks to the very top of the window */
         z-index: 999 !important;
-        background-color: {LIGHT_BG} !important; /* White bg hides scrolling content */
+        background-color: {LIGHT_BG} !important;
         padding-top: 1rem;
         padding-bottom: 0.5rem;
         border-bottom: 1px solid #E0E0E0;
@@ -165,16 +162,16 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- LOGO OVERLAY ---
+# --- LOGO OVERLAY (SCROLLS WITH PAGE) ---
 if logo_base64:
     st.markdown(
         f"""
         <div style="
-            position: fixed;
+            position: absolute; /* Changed from fixed to absolute so it scrolls away */
             top: 1.5rem; 
             left: 50%;
             transform: translateX(-50%);
-            z-index: 1003; /* Must be higher than header (1002) and tabs (999) */
+            z-index: 1002; 
             width: 100%;
             text-align: center;
             pointer-events: none;
@@ -311,7 +308,7 @@ def compute_max_drawdown(cumulative_returns):
     return drawdowns.min() * 100
 
 @st.cache_data(show_spinner=True)
-def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=8):
+def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=9):
     custom_data = _custom_data 
     rf_data = _rf_data
     tx_cost_data = _tx_cost_data
@@ -379,6 +376,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                         current_weights[idx] = w_val
                         current_rc[idx] = rc_val
                 except:
+                    # Inverse Volatility Fallback
                     try:
                         vols = est_window_clean.std()
                         inv_vols = 1.0 / vols
