@@ -4,6 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 import cvxpy as cp
+import streamlit.components.v1 as components  # Added for Chatbot
 from scipy.optimize import minimize_scalar
 from datetime import datetime, timedelta
 from pandas.tseries.offsets import MonthEnd
@@ -45,52 +46,57 @@ st.markdown(
 @st.cache_data
 def load_data_bundle():
     """
-    Loads returns, RF rate, and Transaction Costs.
+    Loads returns, RF rate, and Transaction Costs with robust error handling.
     Returns: (returns_df, rf_series, tx_cost_series)
     """
+    returns_wide = pd.DataFrame()
+    rf_series = pd.Series(dtype=float)
+    tx_cost_series = pd.Series(dtype=float)
+
+    # 1. Load Compustat & ETF (Critical Data)
     try:
-        # Load files
         comp = pd.read_parquet("compustat_git.parquet")
         etf = pd.read_parquet("etf_git.parquet")
-        tx_file = pd.read_parquet("OW_tx_costs.parquet")
 
-        # 1. Extract Risk Free Rate (RF) from Compustat
+        # Extract Risk Free Rate (RF)
         if "RF" in comp.columns:
             comp["date"] = pd.to_datetime(comp["date"])
             rf_raw = comp.groupby("date")["RF"].mean().sort_index()
             rf_series = rf_raw.fillna(0.0)
-        else:
-            rf_series = pd.Series(dtype=float)
 
-        # 2. Extract Transaction Costs
-        # Ensure date is index and sorted
-        if "date" in tx_file.columns and "OW_tx_cost" in tx_file.columns:
-            tx_file["date"] = pd.to_datetime(tx_file["date"])
-            tx_cost_series = tx_file.set_index("date")["OW_tx_cost"].sort_index()
-        else:
-            st.warning("OW_tx_costs.parquet format incorrect. Using 10bps default.")
-            tx_cost_series = pd.Series(dtype=float)
-
-        # 3. Process Stocks (Compustat)
+        # Process Stocks
         comp_ret = comp[["date", "company_name", "monthly_return"]].copy()
         comp_ret["date"] = pd.to_datetime(comp_ret["date"])
         comp_ret = comp_ret.rename(columns={"company_name": "asset", "monthly_return": "ret"})
 
-        # 4. Process ETFs
+        # Process ETFs
         etf_ret = etf[["date", "ETF", "return_monthly"]].copy()
         etf_ret["date"] = pd.to_datetime(etf_ret["date"])
         etf_ret = etf_ret.rename(columns={"ETF": "asset", "return_monthly": "ret"})
 
-        # 5. Merge and Pivot
+        # Merge
         returns_long = pd.concat([comp_ret, etf_ret], ignore_index=True)
         returns_wide = returns_long.pivot(index="date", columns="asset", values="ret").sort_index()
         returns_wide.index = pd.to_datetime(returns_wide.index)
 
-        return returns_wide, rf_series, tx_cost_series
-
     except Exception as e:
-        st.error(f"Error loading data bundle: {e}")
+        st.error(f"CRITICAL: Error loading market data (Compustat/ETF): {e}")
         return pd.DataFrame(), pd.Series(), pd.Series()
+
+    # 2. Load Transaction Costs (Optional/Auxiliary Data)
+    try:
+        tx_file = pd.read_parquet("OW_tx_costs.parquet")
+        if "date" in tx_file.columns and "OW_tx_cost" in tx_file.columns:
+            tx_file["date"] = pd.to_datetime(tx_file["date"])
+            tx_cost_series = tx_file.set_index("date")["OW_tx_cost"].sort_index()
+    except Exception as e:
+        err_msg = str(e)
+        if "magic bytes" in err_msg or "footer" in err_msg:
+            st.warning("⚠️ **Git LFS Error**: `OW_tx_costs.parquet` is likely a pointer file. Using default 10bps.")
+        else:
+            st.warning(f"Could not load custom transaction costs ({err_msg}). Using default 10bps.")
+            
+    return returns_wide, rf_series, tx_cost_series
 
 @st.cache_data
 def load_country_mapping():
@@ -105,6 +111,7 @@ def load_country_mapping():
         return {}
 
 def get_valid_assets(custom_data, start_date, end_date):
+    # Snap dates to Month End
     start_date = pd.to_datetime(start_date) + MonthEnd(0)
     end_date = pd.to_datetime(end_date) + MonthEnd(0)
     
@@ -190,10 +197,6 @@ def compute_max_drawdown(cumulative_returns):
 
 @st.cache_data(show_spinner=True)
 def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12):
-    """
-    Main loop. 
-    _tx_cost_data: Series with index=Date, value=OneWayCost (float, e.g. 0.0010 for 10bps)
-    """
     custom_data = _custom_data 
     rf_data = _rf_data
     tx_cost_data = _tx_cost_data
@@ -231,13 +234,11 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         total_tc = 0.0
         last_cov = None
 
-        # --- REBALANCING LOOP ---
         for j, reb_idx in enumerate(rebalance_indices):
             rebal_date = period_dates[reb_idx]
             global_reb_pos = full_returns.index.get_loc(rebal_date)
             start_pos = max(0, global_reb_pos - lookback_months)
             
-            # Estimate Covariance on Gross Returns
             est_window = full_returns.iloc[start_pos:global_reb_pos].dropna(how="any")
             
             if est_window.shape[0] < n + 1:
@@ -252,41 +253,30 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                 except:
                     weights = previous_weights
             
-            # --- DYNAMIC TRANSACTION COST CALCULATION ---
-            # 1. Get the One-Way Cost for this date (use ffill for safety if date missing)
             if not tx_cost_data.empty:
-                # Find closest date on or before rebal_date
                 try:
-                    # Get cost as of rebalance date
+                    if not tx_cost_data.index.is_monotonic_increasing:
+                         tx_cost_data = tx_cost_data.sort_index()
                     current_tx_rate = tx_cost_data.asof(rebal_date)
-                    if pd.isna(current_tx_rate): current_tx_rate = 0.0010 # Default 10bps if NaN
+                    if pd.isna(current_tx_rate): current_tx_rate = 0.0010
                 except:
                     current_tx_rate = 0.0010
             else:
-                current_tx_rate = 0.0010 # Fallback
+                current_tx_rate = 0.0010 
 
-            # 2. Calculate Total Traded Volume (Buy + Sell)
-            # |New - Old| sums the absolute change. 
-            # Example: Sell 10% A, Buy 10% B -> |-.1| + |.1| = 0.2 volume.
             traded_volume = np.sum(np.abs(weights - previous_weights))
-            
-            # 3. Cost = Volume * OneWayRate
-            # If OneWayRate applies to buys AND sells, we apply it to the full traded volume.
             cost = traded_volume * current_tx_rate
-            
             total_tc += cost
             
             previous_weights = weights.copy()
             weights_over_time[rebal_date] = weights
             
-            # Country Exposure
             country_exp = {}
             for asset, w in zip(selected_assets, weights):
                 c = country_map.get(asset, "Unknown")
                 country_exp[c] = country_exp.get(c, 0) + w
             country_exposure_over_time[rebal_date] = country_exp
 
-            # Calculate Returns
             if j == len(rebalance_indices) - 1:
                 end_slice = len(period_dates)
             else:
@@ -299,7 +289,6 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                     period_port_ret[0] -= cost 
                 port_returns.iloc[reb_idx:end_slice] = period_port_ret
 
-        # --- METRICS ---
         if not rf_data.empty:
             aligned_rf = rf_data.reindex(port_returns.index, method='ffill').fillna(0.0)
             port_excess_returns = port_returns - aligned_rf
@@ -368,6 +357,7 @@ def plot_cumulative_performance(results):
     
     min_val = cum_series.min()
     max_val = cum_series.max()
+    nice_dtick = 1
     if min_val > 0 and max_val > 0:
         log_min = np.log10(min_val)
         log_max = np.log10(max_val)
@@ -379,9 +369,7 @@ def plot_cumulative_performance(results):
         elif normalized < 3.5: nice_dtick = 2.0 * magnitude
         elif normalized < 7.5: nice_dtick = 5.0 * magnitude
         else: nice_dtick = 10.0 * magnitude
-    else:
-        nice_dtick = 1
-        
+
     fig.update_layout(
         title="Cumulative Excess Return (Log Scale)", 
         paper_bgcolor="#000", 
@@ -446,7 +434,6 @@ with tab1:
         
         if start_date < end_date:
             all_assets = custom_data.columns.tolist()
-            # Snap dates for validation
             valid = get_valid_assets(custom_data, start_date, end_date)
             
             col1, col2 = st.columns(2)
@@ -505,3 +492,28 @@ with tab2:
 with tab3:
     st.title("About Us")
     st.write("Pension Fund Optimizer Team.")
+
+# --- CHATBOT INTEGRATION ---
+chatbot_script = """
+<script type="text/javascript">
+  (function(d, t) {
+      var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
+      v.onload = function() {
+        window.voiceflow.chat.load({
+          verify: { projectID: '69283f7c489631e28656d2c1' },
+          url: 'https://general-runtime.voiceflow.com',
+          versionID: 'production',
+          voice: {
+            url: "https://runtime-api.voiceflow.com"
+          }
+        });
+      }
+      v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs";
+      v.type = "text/javascript";
+      s.parentNode.insertBefore(v, s);
+  })(document, 'script');
+</script>
+"""
+
+# Inject the chatbot script into the Streamlit app
+components.html(chatbot_script, height=0, width=0)
