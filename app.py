@@ -6,6 +6,7 @@ import plotly.express as px
 import cvxpy as cp
 import streamlit.components.v1 as components
 import base64
+from fpdf import FPDF
 from scipy.optimize import minimize_scalar
 from datetime import datetime, timedelta
 from pandas.tseries.offsets import MonthEnd
@@ -52,9 +53,9 @@ st.markdown(
         font-family: 'Times New Roman', serif;
     }}
     
-    /* --- FIXED BANNER HEADER --- */
+    /* --- CUSTOM BANNER HEADER (Scrolls Away) --- */
     header {{
-        position: fixed !important;
+        position: absolute !important;  /* Absolute means it scrolls with the page */
         top: 0 !important;
         left: 0 !important;
         right: 0 !important;
@@ -63,41 +64,39 @@ st.markdown(
         background-position: center 45% !important; 
         background-repeat: no-repeat !important;
         height: 8rem !important;                 
-        z-index: 1002 !important; /* Highest layer */
+        z-index: 100 !important;
         background-color: #FFFFFF !important;
         border-bottom: 1px solid #ccc;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }}
     
+    /* Hide Streamlit's decoration bar */
     header .decoration {{ display: none; }}
     
-    /* Push content down to reveal banner */
+    /* Push content down to accommodate banner */
     .block-container {{
-        padding-top: 9rem !important; 
+        padding-top: 8rem !important; 
         padding-bottom: 1rem !important;
     }}
-
-    /* --- ROBUST STICKY TABS --- */
-    /* 1. Allow sticky positioning within the main scroll container */
-    [data-testid="stAppViewContainer"] {{
-        overflow-x: hidden;
-        overflow-y: auto;
-    }}
     
-    /* 2. Target the Tab List and stick it */
+    /* --- ROBUST STICKY TABS --- */
+    /* 1. We target the tab list container. 
+       2. We set top: 0 so it sticks to the very top of the window once the banner scrolls past.
+       3. We give it a high z-index and white background so content slides BEHIND it.
+    */
     div[data-baseweb="tab-list"] {{
         position: sticky !important;
-        position: -webkit-sticky !important; /* Safari */
-        top: 8rem !important; /* Docks right below the 8rem banner */
-        z-index: 999 !important;
-        background-color: {LIGHT_BG} !important; /* White bg hides scrolling content */
-        padding-top: 1rem;
-        padding-bottom: 0.5rem;
+        position: -webkit-sticky !important;
+        top: 0px !important; 
+        z-index: 99999 !important; 
+        background-color: {LIGHT_BG} !important; 
+        padding-top: 10px;
+        padding-bottom: 0px;
+        margin-top: 0px;
         border-bottom: 1px solid #E0E0E0;
-        box-shadow: 0 4px 4px -2px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 6px -4px rgba(0,0,0,0.1);
     }}
 
-    /* Tab Styling */
+    /* Tab Highlight Color */
     div[data-baseweb="tab-highlight"] {{
         background-color: {TAB_UNDERLINE} !important;
     }}
@@ -165,16 +164,16 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- LOGO OVERLAY ---
+# --- LOGO OVERLAY (SCROLLS WITH PAGE) ---
 if logo_base64:
     st.markdown(
         f"""
         <div style="
-            position: fixed;
+            position: absolute; /* Scrolls with page */
             top: 1.5rem; 
             left: 50%;
             transform: translateX(-50%);
-            z-index: 1003; /* Must be higher than header (1002) and tabs (999) */
+            z-index: 1002; /* Above Banner */
             width: 100%;
             text-align: center;
             pointer-events: none;
@@ -286,24 +285,46 @@ def compute_rebalance_indices(dates, freq_label):
         idxs.append(n - 1)
     return idxs
 
-# --- OPTIMIZATION ---
+# --- OPTIMIZATION (RIGOROUS) ---
 
 def solve_erc_weights(cov_matrix):
     n = cov_matrix.shape[0]
-    try:
+    
+    def solve_with_rho(rho):
         w = cp.Variable(n)
-        objective = cp.Minimize(cp.quad_form(w, cov_matrix) - 0.1 * cp.sum(cp.log(w))) # Fixed Rho
+        objective = cp.Minimize(cp.quad_form(w, cov_matrix) - rho * cp.sum(cp.log(w)))
         constraints = [cp.sum(w) == 1, w >= 1e-6]
         prob = cp.Problem(objective, constraints)
         try:
             prob.solve(solver=cp.CLARABEL)
         except:
-            prob.solve(solver=cp.SCS)
+            try:
+                prob.solve(solver=cp.SCS)
+            except:
+                prob.solve(solver=cp.ECOS)
         if prob.status == "optimal":
             return np.array(w.value).flatten()
+        return None
+
+    def rc_variance(rho):
+        w = solve_with_rho(rho)
+        if w is None: return np.inf
+        var = w @ cov_matrix @ w
+        sigma = np.sqrt(var)
+        if sigma <= 0: return np.inf
+        mrc = cov_matrix @ w
+        rc = w * mrc / sigma
+        return np.var(rc)
+
+    try:
+        res = minimize_scalar(rc_variance, bounds=(1e-6, 1e-1), method="bounded", tol=1e-5)
+        w_star = solve_with_rho(res.x)
+        if w_star is None: raise RuntimeError("ERC Solver Failed")
+        w_star = np.where(np.abs(w_star) < 1e-6, 0, w_star)
+        w_star /= w_star.sum()
+        return w_star
     except:
-        pass
-    return None
+        return None
 
 def compute_max_drawdown(cumulative_returns):
     running_max = cumulative_returns.cummax()
@@ -311,7 +332,7 @@ def compute_max_drawdown(cumulative_returns):
     return drawdowns.min() * 100
 
 @st.cache_data(show_spinner=True)
-def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=8):
+def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=13):
     custom_data = _custom_data 
     rf_data = _rf_data
     tx_cost_data = _tx_cost_data
@@ -476,7 +497,6 @@ def plot_cumulative_performance(results):
     if not cum_bench.empty:
         fig.add_trace(go.Scatter(x=cum_bench.index, y=cum_bench.values, mode="lines", name="S&P 500 (Excess)", line=dict(color="#333333", width=2, dash="dash")))
     
-    # Log Scale
     min_val, max_val = cum_series.min(), cum_series.max()
     if min_val > 0 and max_val > 0:
         log_min, log_max = np.log10(min_val), np.log10(max_val)
@@ -550,7 +570,7 @@ with tab0:
     )
 
 with tab1:
-    
+    st.title("Asset Selection")
     custom_data, rf_data, tx_cost_data = load_data_bundle()
     if custom_data.empty:
         st.error("Data error.")
@@ -579,7 +599,7 @@ with tab1:
         else: st.error("End Date must be after Start Date.")
 
 with tab2:
-    
+    st.title("Portfolio Results")
     if "results" in st.session_state:
         res = st.session_state.results
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -629,59 +649,25 @@ with tab2:
     else: st.info("Run optimization first.")
 
 with tab3:
-   
-   
+    st.title("About Us")
     st.write("""
     Welcome to the Pension Fund Optimizer!
-
     We are a dedicated team of financial experts and developers passionate about helping individuals and institutions optimize their pension funds for maximum efficiency and risk management.
-
-    Our tool uses advanced optimization techniques, specifically Dynamic Equal Risk Contribution (ERC) with different rebalancing frequencies, to create balanced portfolios that aim to equalize the risk contributions from each asset over time.
-
+    Our tool uses advanced optimization techniques, specifically Dynamic Equal Risk Contribution (ERC) with annual rebalancing, to create balanced portfolios that aim to equalize the risk contributions from each asset over time.
     Built with Streamlit and powered by open-source libraries, this app provides an intuitive interface for selecting assets, analyzing historical data, and visualizing results.
-
     If you have any questions or feedback, feel free to reach out at support@pensionoptimizer.com.
-
     Thank you for using our tool! 🎉
     """)
-
     st.markdown("---")
     st.markdown("## 👥 Meet the Team")
     st.markdown("<br>", unsafe_allow_html=True)
-
     team = [
-        {
-            "name": "Lucas Jaccard",
-            "role": "Frontend Developer",
-            "desc": "Lucas designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas_JACCARD.JPG"
-        },
-        {
-            "name": "Audrey Champion",
-            "role": "Financial Engineer",
-            "desc": "Audrey focuses on translating theory into practice, helping design the pension fund strategy and ensuring academic rigor in implementation.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey_CHAMPION.JPG"
-        },
-        {
-            "name": "Arda Budak",
-            "role": "Quantitative Analyst",
-            "desc": "Arda applies quantitative methods and stochastic simulations to enhance risk control and portfolio diversification within the project.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda_BUDAK.JPG"
-        },
-        {
-            "name": "Rihem Rhaiem",
-            "role": "Data Scientist",
-            "desc": "Rihem specializes in financial data analytics and portfolio optimization models, contributing quantitative insight to the ERC framework.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem_RHAIEM.JPG"
-        },
-        {
-            "name": "Edward Arion",
-            "role": "Backend Developer",
-            "desc": "Edward ensures computational stability and performance, integrating optimization algorithms efficiently within the Streamlit app.",
-            "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward_ARION.JPG"
-        },
+        {"name": "Lucas Jaccard", "role": "Frontend Developer", "desc": "Lucas designs the app’s visual experience.", "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas_JACCARD.JPG"},
+        {"name": "Audrey Champion", "role": "Financial Engineer", "desc": "Audrey focuses on strategy design.", "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Audrey_CHAMPION.JPG"},
+        {"name": "Arda Budak", "role": "Quantitative Analyst", "desc": "Arda applies quantitative methods.", "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Arda_BUDAK.JPG"},
+        {"name": "Rihem Rhaiem", "role": "Data Scientist", "desc": "Rihem specializes in financial data analytics.", "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem_RHAIEM.JPG"},
+        {"name": "Edward Arion", "role": "Backend Developer", "desc": "Edward ensures computational stability.", "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Edward_ARION.JPG"},
     ]
-
     cols = st.columns(len(team))
     for i, member in enumerate(team):
         with cols[i]:
