@@ -345,17 +345,42 @@ def plot_risk_contributions(results):
     return fig
 
 def plot_cumulative_performance(results):
+    cum_series = results["cum_port"]
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=results["cum_port"].index, y=results["cum_port"].values, mode="lines", name="Portfolio", line=dict(color="#0D6EFD", width=3)))
+    fig.add_trace(go.Scatter(x=cum_series.index, y=cum_series.values, mode="lines", name="Portfolio", line=dict(color="#0D6EFD", width=3)))
     
-    # FIX 2: Added Log Scale
+    # Calculate dynamic dtick for cleaner log scale
+    min_val = cum_series.min()
+    max_val = cum_series.max()
+    if min_val > 0 and max_val > 0:
+        log_min = np.log10(min_val)
+        log_max = np.log10(max_val)
+        log_range = log_max - log_min
+        
+        # Aim for approx 5-8 ticks
+        raw_dtick = log_range / 6
+        # Snap to a "nice" interval
+        magnitude = 10 ** np.floor(np.log10(raw_dtick))
+        normalized = raw_dtick / magnitude
+        if normalized < 1.5: nice_dtick = 1.0 * magnitude
+        elif normalized < 3.5: nice_dtick = 2.0 * magnitude
+        elif normalized < 7.5: nice_dtick = 5.0 * magnitude
+        else: nice_dtick = 10.0 * magnitude
+    else:
+        nice_dtick = 1 # Fallback
+        
     fig.update_layout(
         title="Cumulative Excess Return (Wealth vs Cash) - Log Scale", 
         paper_bgcolor="#000", 
         plot_bgcolor="#000", 
         font=dict(color="#E0E0E0", family="Times New Roman"),
         yaxis_title="Growth of $1 (Log)",
-        yaxis_type="log" 
+        yaxis=dict(
+            type="log",
+            dtick=nice_dtick,
+            tickformat=".2f",
+            minor=dict(showgrid=False) # Hides messy minor lines
+        )
     )
     return fig
 
@@ -396,7 +421,6 @@ with tab0:
 
 with tab1:
     st.title("Asset Selection")
-    # Load both Returns and RF
     custom_data, rf_data = load_data_bundle()
     
     if custom_data.empty:
