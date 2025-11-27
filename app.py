@@ -620,7 +620,7 @@ with tab1:
                         results = perform_optimization(selected_assets, start_date, end_date, rebalance_freq, custom_data, rf_data, tx_cost_data)
                         if results:
                             st.session_state.results = results
-                            st.success("Done!")
+                            st.success("Portfolio results ready!")
         else: st.error("End Date must be after Start Date.")
 
 with tab2:
