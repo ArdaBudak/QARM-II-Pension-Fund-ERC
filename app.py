@@ -34,11 +34,6 @@ st.markdown(
         --font: 'Times New Roman', serif;
     }}
     
-    
-    /* Optional: Change the bottom border line of the tab container */
-    div[data-baseweb="tab-list"] {
-        border-bottom-color: #E0E0E0 !important;
-    }
     /* Main App Background */
     .stApp {{
         background-color: {LIGHT_BG};
