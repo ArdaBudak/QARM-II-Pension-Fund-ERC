@@ -411,18 +411,14 @@ tab0, tab1, tab2, tab3 = st.tabs(["How to Use", "Asset Selection", "Portfolio Re
 
 with tab0:
     st.title("How to Use")
-    st.markdown("""
-    1. **Asset Selection**: Choose your date range and assets.
-    2. **Optimization**: The app calculates the Equal Risk Contribution (ERC) portfolio.
-    3. **Data**: Uses dynamic Transaction Costs and Risk-Free Rate.
-    4. **Results**: View Net Excess Returns (Log Scale) and Risk Metrics.
-    """)
+    # Removed text instructions as requested
     
-    # --- CHATBOT INTEGRATION (Inside Tab 0) ---
-    st.write("---")
-    st.subheader("🤖 Pension Fund Assistant")
+    # --- EMBEDDED CHATBOT (Visible, Non-Floating) ---
     components.html(
         """
+        <style>
+            body { margin: 0; padding: 0; }
+        </style>
         <script type="text/javascript">
           (function(d, t) {
               var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
@@ -431,6 +427,11 @@ with tab0:
                   verify: { projectID: '69283f7c489631e28656d2c1' },
                   url: 'https://general-runtime.voiceflow.com',
                   versionID: 'production',
+                  render: {
+                      mode: 'embedded',
+                      target: document.body
+                  },
+                  autostart: true,
                   voice: {
                     url: "https://runtime-api.voiceflow.com"
                   }
@@ -442,8 +443,8 @@ with tab0:
           })(document, 'script');
         </script>
         """,
-        height=700, # Ensures space for the chat window
-        width=500   # Ensures proper width
+        height=600, # Height of the visible chat window
+        scrolling=False
     )
 
 with tab1:
