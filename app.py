@@ -19,35 +19,97 @@ try:
 except:
     pass 
 
+# --- LIGHT THEME CONFIGURATION ---
+PRIMARY_PURPLE = "#5e6ad2"  # Chatbot Purple
+LIGHT_BG = "#FFFFFF"        # Main Background
+SIDEBAR_BG = "#F5F5F5"      # Light Grey Banner
+TEXT_COLOR = "#000000"      # Black Text
+
 st.markdown(
-    """
+    f"""
     <style>
-    :root { --primary-color: #f0f0f0; }
-    .stApp { background-color: #000000; color: #f0f0f0; font-family: 'Times New Roman', serif; }
-    .stSidebar { background-color: #111111; color: #f0f0f0; font-family: 'Times New Roman', serif; }
-    .stButton>button { background-color: #f0f0f0; color: #000000; border-radius: 8px; padding: 10px 20px; font-family: 'Times New Roman', serif; }
-    .stButton>button:hover { background-color: #dddddd; }
-    [data-testid="stDownloadButton"] button {
+    :root {{
+        --primary-color: {PRIMARY_PURPLE};
+        --background-color: {LIGHT_BG};
+        --secondary-background-color: {SIDEBAR_BG};
+        --text-color: {TEXT_COLOR};
+        --font: 'Times New Roman', serif;
+    }}
+    
+    /* Main App Background */
+    .stApp {{
+        background-color: {LIGHT_BG};
+        color: {TEXT_COLOR};
+        font-family: 'Times New Roman', serif;
+    }}
+    
+    /* Sidebar / Banner Background */
+    .stSidebar {{
+        background-color: {SIDEBAR_BG};
+    }}
+    section[data-testid="stSidebar"] {{
+        background-color: {SIDEBAR_BG};
+        color: {TEXT_COLOR};
+    }}
+    
+    /* Buttons (Primary Purple) */
+    .stButton>button {{ 
+        background-color: {PRIMARY_PURPLE}; 
+        color: #FFFFFF; 
+        border-radius: 8px; 
+        padding: 10px 24px; 
+        font-family: 'Times New Roman', serif; 
+        border: none;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }}
+    .stButton>button:hover {{ 
+        background-color: #4b55a8; 
+        box-shadow: 0 4px 14px 0 rgba(94, 106, 210, 0.39);
+        color: #FFFFFF;
+    }}
+
+    /* Download Button (White with Black Text & Border) */
+    [data-testid="stDownloadButton"] button {{
         background-color: #FFFFFF !important;
         color: #000000 !important;
         border: 1px solid #cccccc !important;
         font-weight: bold !important;
-    }
-    [data-testid="stDownloadButton"] button:hover {
+    }}
+    [data-testid="stDownloadButton"] button:hover {{
         background-color: #f0f0f0 !important;
-        border-color: #aaaaaa !important;
-    }
-    .stHeader { color: #f0f0f0; font-size: 32px; font-weight: bold; font-family: 'Times New Roman', serif; }
-    .stExpander { background-color: #222222; color: #f0f0f0; font-family: 'Times New Roman', serif; }
-    .stMultiSelect [data-testid=stMarkdownContainer] { color: #f0f0f0; font-family: 'Times New Roman', serif; }
-    .stPlotlyChart { background-color: #000000; }
-    .stDateInput label { color: #f0f0f0 !important; font-family: 'Times New Roman', serif; }
-    .stTable { color: #f0f0f0 !important; font-family: 'Times New Roman', serif; }
-    table { color: #f0f0f0 !important; font-family: 'Times New Roman', serif; }
-    th, td { color: #f0f0f0 !important; font-family: 'Times New Roman', serif; }
-    .stMetric, .stMetric label, .stMetricValue, [data-testid="stMetric"], [data-testid="stMetricLabel"], [data-testid="stMetricValue"] { color: #f0f0f0 !important; font-family: 'Times New Roman', serif; }
-    header { background-color: #000000 !important; }
-    div[data-testid="stAlert"] { background-color: #111111 !important; color: #f0f0f0 !important; border-color: #f0f0f0 !important; font-family: 'Times New Roman', serif; }
+        border-color: #999999 !important;
+    }}
+
+    /* Headers & Text - Force Black */
+    h1, h2, h3, h4, h5, h6, .stHeader {{ 
+        color: {TEXT_COLOR} !important; 
+        font-family: 'Times New Roman', serif; 
+    }}
+    p, label, span, div {{ 
+        color: {TEXT_COLOR}; 
+        font-family: 'Times New Roman', serif; 
+    }}
+    
+    /* Input Widgets */
+    .stDateInput label, .stSelectbox label, .stMultiSelect label {{ 
+        color: {TEXT_COLOR} !important; 
+    }}
+    
+    /* Metrics */
+    .stMetric label {{ color: #555555 !important; }}
+    .stMetricValue {{ color: {TEXT_COLOR} !important; }}
+    
+    /* Expander */
+    .stExpander {{ 
+        background-color: #FFFFFF; 
+        border: 1px solid #ddd; 
+        color: {TEXT_COLOR};
+    }}
+    
+    /* Plotly Chart Backgrounds */
+    .stPlotlyChart {{ background-color: {LIGHT_BG}; }}
+    
     </style>
     """,
     unsafe_allow_html=True
@@ -393,6 +455,7 @@ def create_pdf_report(results):
     pdf.set_font("Times", size=12)
     pdf.ln(10)
     
+    # Metrics
     pdf.set_font("Times", 'B', 12)
     pdf.cell(0, 10, "Key Performance Metrics (Excess Return)", ln=1)
     pdf.set_font("Times", size=12)
@@ -410,6 +473,7 @@ def create_pdf_report(results):
         
     pdf.ln(10)
     
+    # Allocations
     pdf.set_font("Times", 'B', 12)
     pdf.cell(0, 10, "Current Portfolio Allocation (>1%)", ln=1)
     pdf.set_font("Times", size=12)
@@ -422,20 +486,19 @@ def create_pdf_report(results):
         if weight > 0.01:
             pdf.cell(0, 10, f"{asset}: {weight*100:.2f}%", ln=1)
 
+    # Charts
     try:
-        # Helper: Create clean white-bg chart for PDF
         def add_chart_to_pdf(fig, title, height=600):
             pdf.add_page()
             pdf.set_font("Times", 'B', 14)
             pdf.cell(0, 10, title, ln=1, align='C')
             
-            # Create a static copy to avoid messing with the web view
             static_fig = go.Figure(fig)
             static_fig.update_layout(
-                template="plotly_white",  # Force white background
+                template="plotly_white",  # White background for printing
                 paper_bgcolor="white",
                 plot_bgcolor="white",
-                font=dict(color="black"),
+                font=dict(color="black", family="Times New Roman"),
                 width=1000, 
                 height=height
             )
@@ -444,22 +507,15 @@ def create_pdf_report(results):
                 static_fig.write_image(tmpfile.name)
                 pdf.image(tmpfile.name, x=10, y=30, w=190)
 
-        # 1. Cumulative Performance
         add_chart_to_pdf(plot_cumulative_performance(results), "Cumulative Performance", height=700)
-        
-        # 2. Weights Evolution
         add_chart_to_pdf(plot_weights_over_time(results), "Weights Evolution")
-        
-        # 3. Risk Evolution
-        add_chart_to_pdf(plot_risk_evolution(results), "Risk Contributions Over Time") 
-        
-        # 4. Country Exposure
+        add_chart_to_pdf(plot_risk_evolution(results), "Risk Contribution Evolution") 
         add_chart_to_pdf(plot_country_exposure_over_time(results), "Country Exposure")
         
     except Exception as e:
         pdf.ln(10)
         pdf.set_font("Times", 'I', 10)
-        pdf.cell(0, 10, f"Charts could not be generated: {str(e)}", ln=1)
+        pdf.cell(0, 10, f"Charts missing: {str(e)}", ln=1)
 
     return pdf.output(dest='S').encode('latin-1')
 
@@ -471,12 +527,13 @@ def plot_risk_evolution(results):
     fig = px.line(df, x=df.index, y=df.columns)
     fig.update_layout(
         title="Risk Contribution Evolution (Target: Equal Risk)",
-        paper_bgcolor="#000", 
-        plot_bgcolor="#000", 
-        font=dict(color="#E0E0E0", family="Times New Roman"),
+        paper_bgcolor="#FFFFFF", 
+        plot_bgcolor="#FFFFFF", 
+        font=dict(color="#000000", family="Times New Roman"),
         yaxis_title="Risk Contribution (%)",
         showlegend=True,
-        height=500
+        height=500,
+        template="plotly_white"
     )
     return fig
 
@@ -490,7 +547,7 @@ def plot_cumulative_performance(results):
         y=cum_series.values, 
         mode="lines", 
         name="Portfolio", 
-        line=dict(color="#0D6EFD", width=3)
+        line=dict(color="#5e6ad2", width=3) # Changed to Purple
     ))
     
     if not cum_bench.empty:
@@ -499,7 +556,7 @@ def plot_cumulative_performance(results):
             y=cum_bench.values, 
             mode="lines", 
             name="S&P 500 (Excess)", 
-            line=dict(color="#FFFFFF", width=2, dash="dash")
+            line=dict(color="#333333", width=2, dash="dash") # Changed to Dark Grey for Light Mode
         ))
     
     min_val = cum_series.min()
@@ -509,7 +566,7 @@ def plot_cumulative_performance(results):
         log_min = np.log10(min_val)
         log_max = np.log10(max_val)
         log_range = log_max - log_min
-        raw_dtick = log_range / 2.5 # Reduced grid density further
+        raw_dtick = log_range / 2.5 
         magnitude = 10 ** np.floor(np.log10(raw_dtick))
         normalized = raw_dtick / magnitude
         if normalized < 1.5: nice_dtick = 1.0 * magnitude
@@ -519,9 +576,9 @@ def plot_cumulative_performance(results):
 
     fig.update_layout(
         title="Cumulative Excess Return (Log Scale)", 
-        paper_bgcolor="#000", 
-        plot_bgcolor="#000", 
-        font=dict(color="#E0E0E0", family="Times New Roman"),
+        paper_bgcolor="#FFFFFF", 
+        plot_bgcolor="#FFFFFF", 
+        font=dict(color="#000000", family="Times New Roman"),
         yaxis_title="Growth of $1 (Log)",
         yaxis=dict(
             type="log",
@@ -529,7 +586,8 @@ def plot_cumulative_performance(results):
             tickformat=".2f",
             minor=dict(showgrid=False) 
         ),
-        height=650 
+        height=650,
+        template="plotly_white"
     )
     return fig
 
@@ -538,17 +596,23 @@ def plot_weights_over_time(results):
     fig = px.area(df, x=df.index, y=df.columns)
     fig.update_traces(hovertemplate='%{y:.1%}') 
     fig.update_layout(
-        paper_bgcolor="#000", 
-        plot_bgcolor="#000", 
-        font=dict(color="#E0E0E0", family="Times New Roman"),
+        paper_bgcolor="#FFFFFF", 
+        plot_bgcolor="#FFFFFF", 
+        font=dict(color="#000000", family="Times New Roman"),
         title="Weights Evolution (Stacked)",
-        height=500
+        height=500,
+        template="plotly_white"
     )
     return fig
 
 def plot_correlation_matrix(results):
-    fig = px.imshow(results["corr_matrix"], color_continuous_scale=["#0D6EFD", "#FFFFFF"], aspect="auto")
-    fig.update_layout(paper_bgcolor="#000", plot_bgcolor="#000", font=dict(color="#E0E0E0", family="Times New Roman"))
+    fig = px.imshow(results["corr_matrix"], color_continuous_scale=["#5e6ad2", "#FFFFFF"], aspect="auto")
+    fig.update_layout(
+        paper_bgcolor="#FFFFFF", 
+        plot_bgcolor="#FFFFFF", 
+        font=dict(color="#000000", family="Times New Roman"),
+        template="plotly_white"
+    )
     return fig
 
 def plot_country_exposure_over_time(results):
@@ -557,7 +621,14 @@ def plot_country_exposure_over_time(results):
     fig = go.Figure()
     for country in df.columns:
         fig.add_trace(go.Scatter(x=df.index, y=df[country]*100, mode="lines", name=str(country)))
-    fig.update_layout(paper_bgcolor="#000", plot_bgcolor="#000", font=dict(color="#E0E0E0", family="Times New Roman"), yaxis_title="Exposure (%)", height=500)
+    fig.update_layout(
+        paper_bgcolor="#FFFFFF", 
+        plot_bgcolor="#FFFFFF", 
+        font=dict(color="#000000", family="Times New Roman"),
+        yaxis_title="Exposure (%)", 
+        height=500,
+        template="plotly_white"
+    )
     return fig
 
 # --- MAIN APP ---
@@ -565,12 +636,12 @@ def plot_country_exposure_over_time(results):
 tab0, tab1, tab2, tab3 = st.tabs(["How to Use", "Asset Selection", "Portfolio Results", "About Us"])
 
 with tab0:
-    # --- EMBEDDED CHATBOT ---
+    # --- EMBEDDED CHATBOT (Light Mode to match app) ---
     components.html(
         """
         <style>
-            body { margin: 0; padding: 0; background-color: #000000; height: 100vh; width: 100%; overflow: hidden; }
-            .vfrc-widget--chat { background-color: #000000 !important; height: 100% !important; }
+            body { margin: 0; padding: 0; background-color: #FFFFFF; height: 100vh; width: 100%; overflow: hidden; }
+            .vfrc-widget--chat { background-color: #FFFFFF !important; height: 100% !important; }
         </style>
         <script type="text/javascript">
           (function(d, t) {
