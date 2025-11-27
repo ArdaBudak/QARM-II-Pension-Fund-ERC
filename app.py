@@ -459,7 +459,6 @@ def plot_country_exposure_over_time(results):
 tab0, tab1, tab2, tab3 = st.tabs(["How to Use", "Asset Selection", "Portfolio Results", "About Us"])
 
 with tab0:
-    st.title("How to Use")
     # --- EMBEDDED CHATBOT ---
     components.html(
         """
