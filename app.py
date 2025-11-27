@@ -4,7 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 import cvxpy as cp
-import streamlit.components.v1 as components  # Added for Chatbot
+import streamlit.components.v1 as components
 from scipy.optimize import minimize_scalar
 from datetime import datetime, timedelta
 from pandas.tseries.offsets import MonthEnd
@@ -414,9 +414,37 @@ with tab0:
     st.markdown("""
     1. **Asset Selection**: Choose your date range and assets.
     2. **Optimization**: The app calculates the Equal Risk Contribution (ERC) portfolio.
-    3. **Data**: Uses dynamic Transaction Costs (OW_tx_costs) and Risk-Free Rate.
-    4. **Results**: Excess Return (Log Scale).
+    3. **Data**: Uses dynamic Transaction Costs and Risk-Free Rate.
+    4. **Results**: View Net Excess Returns (Log Scale) and Risk Metrics.
     """)
+    
+    # --- CHATBOT INTEGRATION (Inside Tab 0) ---
+    st.write("---")
+    st.subheader("🤖 Pension Fund Assistant")
+    components.html(
+        """
+        <script type="text/javascript">
+          (function(d, t) {
+              var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
+              v.onload = function() {
+                window.voiceflow.chat.load({
+                  verify: { projectID: '69283f7c489631e28656d2c1' },
+                  url: 'https://general-runtime.voiceflow.com',
+                  versionID: 'production',
+                  voice: {
+                    url: "https://runtime-api.voiceflow.com"
+                  }
+                });
+              }
+              v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs";
+              v.type = "text/javascript";
+              s.parentNode.insertBefore(v, s);
+          })(document, 'script');
+        </script>
+        """,
+        height=700, # Ensures space for the chat window
+        width=500   # Ensures proper width
+    )
 
 with tab1:
     st.title("Asset Selection")
@@ -434,6 +462,7 @@ with tab1:
         
         if start_date < end_date:
             all_assets = custom_data.columns.tolist()
+            # Snap dates for validation
             valid = get_valid_assets(custom_data, start_date, end_date)
             
             col1, col2 = st.columns(2)
@@ -492,28 +521,3 @@ with tab2:
 with tab3:
     st.title("About Us")
     st.write("Pension Fund Optimizer Team.")
-
-# --- CHATBOT INTEGRATION ---
-chatbot_script = """
-<script type="text/javascript">
-  (function(d, t) {
-      var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
-      v.onload = function() {
-        window.voiceflow.chat.load({
-          verify: { projectID: '69283f7c489631e28656d2c1' },
-          url: 'https://general-runtime.voiceflow.com',
-          versionID: 'production',
-          voice: {
-            url: "https://runtime-api.voiceflow.com"
-          }
-        });
-      }
-      v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs";
-      v.type = "text/javascript";
-      s.parentNode.insertBefore(v, s);
-  })(document, 'script');
-</script>
-"""
-
-# Inject the chatbot script into the Streamlit app
-components.html(chatbot_script, height=0, width=0)
