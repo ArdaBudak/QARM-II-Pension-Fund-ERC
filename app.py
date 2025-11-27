@@ -15,24 +15,11 @@ from sklearn.covariance import LedoitWolf
 # Custom styling
 st.set_page_config(page_title="Pension Fund Optimizer", layout="wide")
 
-# --- LOGO HANDLING (New Approach) ---
-# We use st.sidebar.image instead of st.logo to allow centering and resizing
-try:
-    with st.sidebar:
-        # Use columns to center the logo perfectly
-        # Adjust the middle column width ratio to make logo bigger/smaller
-        # [1, 3, 1] means the image takes 3/5ths of the sidebar width.
-        l, m, r = st.columns([0.2, 3, 0.2]) 
-        with m:
-            st.image("ERC Portfolio.png", width=250) # Explicit width for control
-except:
-    pass 
-
 # --- THEME CONFIGURATION ---
 BUTTON_COLOR = "#E0E0E0"    # Light Grey for Optimize Button
 BUTTON_TEXT = "#000000"     # Black Text
 LIGHT_BG = "#FFFFFF"        # Main Background
-SIDEBAR_BG = "#F5F5F5"      # Sidebar Background
+SIDEBAR_BG = "#F5F5F5"      # Light Grey Sidebar
 TEXT_COLOR = "#000000"      # Black Text
 
 st.markdown(
@@ -62,6 +49,18 @@ st.markdown(
         color: {TEXT_COLOR};
     }}
 
+    /* --- LOGO CENTERING (Pure CSS) --- */
+    /* This targets the image in the sidebar and centers it perfectly */
+    [data-testid="stSidebar"] img {{
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 85%;  /* Makes it big (85% of sidebar width) */
+        max-width: 300px; /* Cap size so it doesn't get huge on big screens */
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }}
+
     /* --- BUTTONS (Optimize) --- */
     .stButton>button {{ 
         background-color: {BUTTON_COLOR}; 
@@ -69,12 +68,12 @@ st.markdown(
         border-radius: 8px; 
         padding: 10px 24px; 
         font-family: 'Times New Roman', serif; 
-        border: 1px solid #CCCCCC; /* Subtle border */
+        border: 1px solid #CCCCCC;
         font-weight: bold;
         transition: all 0.3s ease;
     }}
     .stButton>button:hover {{ 
-        background-color: #D5D5D5; /* Slightly darker grey on hover */
+        background-color: #D5D5D5; 
         border-color: #999999;
         color: {BUTTON_TEXT};
         box-shadow: 0 4px 6px rgba(0,0,0, 0.1);
@@ -135,6 +134,10 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+# --- SIDEBAR LOGO ---
+with st.sidebar:
+    st.image("ERC Portfolio.png") # CSS above handles the centering and sizing
 
 # --- DATA LOADING FUNCTIONS ---
 
@@ -476,6 +479,7 @@ def create_pdf_report(results):
     pdf.set_font("Times", size=12)
     pdf.ln(10)
     
+    # Metrics
     pdf.set_font("Times", 'B', 12)
     pdf.cell(0, 10, "Key Performance Metrics (Excess Return)", ln=1)
     pdf.set_font("Times", size=12)
@@ -493,6 +497,7 @@ def create_pdf_report(results):
         
     pdf.ln(10)
     
+    # Allocations
     pdf.set_font("Times", 'B', 12)
     pdf.cell(0, 10, "Current Portfolio Allocation (>1%)", ln=1)
     pdf.set_font("Times", size=12)
@@ -505,6 +510,7 @@ def create_pdf_report(results):
         if weight > 0.01:
             pdf.cell(0, 10, f"{asset}: {weight*100:.2f}%", ln=1)
 
+    # Charts
     try:
         def add_chart_to_pdf(fig, title, height=600):
             pdf.add_page()
