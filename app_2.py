@@ -1161,18 +1161,6 @@ with tab0:
             unsafe_allow_html=True,
         )
 
-    st.markdown(
-        """
-        <div class="content-card">
-            <p>
-            The goal is not simply to “beat the market at all costs”, but to illustrate how ERC reshapes  
-            the <strong>risk allocation profile</strong> of a multi-asset portfolio compared to a naive Equal-Weight rule.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     with st.expander("Optional embedded assistant"):
         components.html(
             """
