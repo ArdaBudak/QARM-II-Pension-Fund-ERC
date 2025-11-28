@@ -159,7 +159,7 @@ st.markdown(
         font-weight: 500 !important;
         font-size: 0.95rem !important;
         margin: 0;
-        color: #6B7280;  /* grey inactive */
+        color: #6B7280;
     }}
 
     .stTabs [data-baseweb="tab"]:focus {{
@@ -181,7 +181,7 @@ st.markdown(
         font-weight: 600 !important;
     }}
 
-    /* Sliding highlight bar under the active tab (barre glissante) */
+    /* Sliding highlight bar under the active tab */
     .stTabs [data-baseweb="tab-highlight"] {{
         background-color: {TAB_UNDERLINE} !important;
         border-radius: 999px !important;
@@ -212,7 +212,6 @@ st.markdown(
         font-size: 0.96rem;
     }}
 
-    /* Ensure button text is always white and readable */
     .stButton>button,
     .stButton>button * {{
         color: {BUTTON_TEXT} !important;
@@ -226,7 +225,6 @@ st.markdown(
 
     /* INPUTS & SELECTORS */
 
-    /* Date inputs: wrapper bubble in dark color */
     .stDateInput > div[data-baseweb="input"] {{
         background-color: {PRIMARY_COLOR} !important;
         color: {BUTTON_TEXT} !important;
@@ -234,7 +232,6 @@ st.markdown(
         border: 1px solid #4B5563 !important;
     }}
 
-    /* Actual text field inside */
     .stDateInput input {{
         background-color: transparent !important;
         color: {BUTTON_TEXT} !important;
@@ -242,7 +239,6 @@ st.markdown(
         border: none !important;
     }}
 
-    /* Selectbox & Multiselect containers */
     .stSelectbox > div[data-baseweb="select"],
     .stMultiSelect > div[data-baseweb="select"] {{
         background-color: #111827 !important;
@@ -252,13 +248,11 @@ st.markdown(
         min-height: 40px;
     }}
 
-    /* Selected text / placeholder inside selects */
     .stSelectbox div[data-baseweb="select"] span,
     .stMultiSelect div[data-baseweb="select"] span {{
         color: #F9FAFB !important;
     }}
 
-    /* Dropdown menu for options */
     div[role="listbox"] {{
         background-color: #111827 !important;
         color: #F9FAFB !important;
@@ -266,7 +260,6 @@ st.markdown(
         border: 1px solid #4B5563 !important;
     }}
 
-    /* Individual options */
     div[role="option"] {{
         color: #F9FAFB !important;
     }}
@@ -275,7 +268,6 @@ st.markdown(
         background-color: #4B5563 !important;
     }}
 
-    /* TAGS */
     span[data-baseweb="tag"] {{
         background-color: #4B5563 !important;
         color: #F9FAFB !important;
@@ -310,7 +302,7 @@ st.markdown(
         font-size: 0.97rem;
     }}
 
-    /* GENERAL CARD STYLE (for pure HTML blocks) */
+    /* GENERAL CARD STYLE */
     .content-card {{
         max-width: 1000px;
         margin: 1.5rem auto 1.8rem auto;
@@ -340,14 +332,13 @@ st.markdown(
         box-shadow: 0 6px 18px rgba(0,0,0,0.04);
     }}
 
-    /* FORCE METRIC TEXT TO DARK (labels, values, deltas) */
+    /* FORCE METRIC TEXT TO DARK */
     [data-testid="stMetricLabel"],
     [data-testid="stMetricValue"],
     [data-testid="stMetricDelta"] {{
         color: #111827 !important;
     }}
 
-    /* COLUMNS CARD LOOK (for the 3 steps) */
     .three-step-card {{
         background-color: #FFFFFF;
         border-radius: 16px;
@@ -356,7 +347,6 @@ st.markdown(
         border: 1px solid #E5E7EB;
     }}
 
-    /* TEAM CARDS */
     .team-card {{
         background-color: #FFFFFF;
         border-radius: 18px;
@@ -403,7 +393,6 @@ st.markdown(
         flex-wrap: wrap;
     }}
 
-    /* PRINT MODE */
     @media print {{
         section[data-testid="stSidebar"], 
         .stButton, 
@@ -681,7 +670,6 @@ def perform_optimization(
             if len(valid_assets) > 0:
                 try:
                     if len(valid_assets) == 1:
-                        # Single-asset case
                         w_active = np.array([1.0])
                         rc_active = np.array([100.0])
                     else:
@@ -703,7 +691,6 @@ def perform_optimization(
                         current_rc[idx] = rc_val
 
                 except Exception:
-                    # Fallback: Inverse volatility
                     try:
                         vols = est_window_clean.std()
                         inv_vols = 1.0 / vols
@@ -713,7 +700,6 @@ def perform_optimization(
                             current_weights_erc[idx] = w_val
                             current_rc[idx] = 100.0 / len(valid_assets)
                     except Exception:
-                        # If even that fails, keep previous weights (if valid)
                         if np.sum(previous_weights_erc) > 0.9:
                             current_weights_erc = previous_weights_erc
 
@@ -733,7 +719,6 @@ def perform_optimization(
             else:
                 current_tx_rate = 0.0010
 
-            # ERC: traded volume and cost
             traded_volume_erc = np.sum(np.abs(current_weights_erc - previous_weights_erc))
             cost_erc = traded_volume_erc * current_tx_rate
             total_tc_erc += cost_erc
@@ -748,7 +733,7 @@ def perform_optimization(
                 country_exp[c] = country_exp.get(c, 0.0) + w
             country_exposure_over_time[rebal_date] = country_exp
 
-            # EW portfolio: rebalanced on the same dates
+            # EW portfolio
             current_weights_ew = ew_weights_const.copy()
             traded_volume_ew = np.sum(np.abs(current_weights_ew - previous_weights_ew))
             cost_ew = traded_volume_ew * current_tx_rate
@@ -764,13 +749,11 @@ def perform_optimization(
 
             sub_ret = period_returns.iloc[reb_idx:end_slice].fillna(0.0)
             if not sub_ret.empty:
-                # ERC path
                 period_erc_ret = sub_ret.values @ current_weights_erc
                 if len(period_erc_ret) > 0:
                     period_erc_ret[0] -= cost_erc
                 port_returns_erc.iloc[reb_idx:end_slice] = period_erc_ret
 
-                # EW path
                 period_ew_ret = sub_ret.values @ current_weights_ew
                 if len(period_ew_ret) > 0:
                     period_ew_ret[0] -= cost_ew
@@ -812,12 +795,10 @@ def perform_optimization(
         max_drawdown_ew = compute_max_drawdown(cum_port_excess_ew)
 
         # --------- Historical data for Monte Carlo ---------
-        # Use full history on the chosen period (excluding rows with missing values)
         hist_data_mc = full_returns.dropna(how="any")
 
         return {
             "selected_assets": selected_assets,
-            # ERC (main strategy)
             "weights": current_weights_erc,
             "risk_contrib_pct": rc_pct,
             "expected_return": ann_excess_ret_erc * 100,
@@ -833,7 +814,6 @@ def perform_optimization(
             "country_exposure_over_time": country_exposure_over_time,
             "hist_data": hist_data_mc,
             "cum_benchmark": cum_benchmark,
-            # EW benchmark (same assets, different allocation rule)
             "ew_expected_return": ann_excess_ret_ew * 100,
             "ew_volatility": ann_vol_ew * 100,
             "ew_sharpe": sharpe_ew,
@@ -860,27 +840,20 @@ def run_monte_carlo(hist_returns_df, weights, years=10, simulations=1000, initia
     if hist_returns_df.empty:
         return [], [], [], [], []
 
-    # 1. Portfolio historical returns
     port_hist_returns = hist_returns_df.values @ weights
+    n_steps = int(years * 12)
 
-    n_steps = int(years * 12)  # monthly steps
-
-    # 2. Bootstrap indices
     random_indices = np.random.choice(len(port_hist_returns), size=(simulations, n_steps))
-
-    # 3. Construct scenarios
     simulated_returns = port_hist_returns[random_indices]
     growth_factors = 1 + simulated_returns
     cumulative_growth = np.cumprod(growth_factors, axis=1)
 
-    # 4. Portfolio value paths
     price_paths = initial_capital * np.hstack([np.ones((simulations, 1)), cumulative_growth])
 
-    # 5. Summary statistics
     dates = [datetime.now() + timedelta(days=30 * i) for i in range(n_steps + 1)]
     median_path = np.median(price_paths, axis=0)
-    p95 = np.percentile(price_paths, 95, axis=0)  # bull case
-    p05 = np.percentile(price_paths, 5, axis=0)   # bear case
+    p95 = np.percentile(price_paths, 95, axis=0)
+    p05 = np.percentile(price_paths, 5, axis=0)
 
     return dates, median_path, p95, p05, price_paths
 
@@ -888,7 +861,6 @@ def run_monte_carlo(hist_returns_df, weights, years=10, simulations=1000, initia
 def plot_monte_carlo(dates, median, p95, p05):
     fig = go.Figure()
 
-    # Confidence fan
     fig.add_trace(
         go.Scatter(
             x=dates,
@@ -911,43 +883,22 @@ def plot_monte_carlo(dates, median, p95, p05):
         )
     )
 
-    # Median projection
     fig.add_trace(
         go.Scatter(
             x=dates,
             y=median,
             mode="lines",
-            line=dict(color="#1F2937", width=3),
+            line=dict(width=3),
             name="Median Projection",
         )
     )
 
     fig.update_layout(
         title="Long-Term Monte Carlo Projection (Historical Bootstrap)",
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        font=dict(color="#111827", family="Times New Roman"),
         yaxis_title="Portfolio Value ($)",
         height=600,
         template="plotly_white",
-        legend=dict(
-            bgcolor="white",
-            bordercolor="#E5E7EB",
-            borderwidth=1,
-            font=dict(color="#111827", size=11),
-        ),
-        xaxis=dict(
-            showgrid=True,
-            gridcolor="#E5E7EB",
-            linecolor="#111827",
-            tickfont=dict(color="#111827"),
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor="#E5E7EB",
-            linecolor="#111827",
-            tickfont=dict(color="#111827"),
-        ),
+        font=dict(family="Times New Roman"),
     )
     return fig
 
@@ -962,18 +913,16 @@ def plot_cumulative_performance(results):
 
     fig = go.Figure()
 
-    # ERC
     fig.add_trace(
         go.Scatter(
             x=cum_erc.index,
             y=cum_erc.values,
             mode="lines",
             name="ERC Portfolio",
-            line=dict(color="#1F2937", width=3),
+            line=dict(width=3),
         )
     )
 
-    # EW
     if not cum_ew.empty:
         fig.add_trace(
             go.Scatter(
@@ -981,11 +930,10 @@ def plot_cumulative_performance(results):
                 y=cum_ew.values,
                 mode="lines",
                 name="Equal-Weight (same assets)",
-                line=dict(color="#9CA3AF", width=2, dash="dot"),
+                line=dict(width=2, dash="dot"),
             )
         )
 
-    # Benchmark
     if not cum_bench.empty:
         fig.add_trace(
             go.Scatter(
@@ -993,11 +941,10 @@ def plot_cumulative_performance(results):
                 y=cum_bench.values,
                 mode="lines",
                 name="S&P 500 (excess)",
-                line=dict(color="#4B5563", width=2, dash="dash"),
+                line=dict(width=2, dash="dash"),
             )
         )
 
-    # Log scale with nice ticks
     all_series = [cum_erc]
     if not cum_ew.empty:
         all_series.append(cum_ew)
@@ -1029,33 +976,19 @@ def plot_cumulative_performance(results):
 
     fig.update_layout(
         title="Cumulative Excess Return (ERC vs EW vs S&P 500, log scale)",
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        font=dict(color="#111827", family="Times New Roman"),
-        yaxis_title="Growth of $1 (log)",
         yaxis=dict(
             type="log",
             dtick=nice_dtick,
             tickformat=".2f",
             minor=dict(showgrid=False),
-            tickfont=dict(color="#111827"),
-            linecolor="#111827",
-            gridcolor="#E5E7EB",
+            title="Growth of $1 (log)",
         ),
         xaxis=dict(
-            showgrid=True,
-            gridcolor="#E5E7EB",
-            linecolor="#111827",
-            tickfont=dict(color="#111827"),
+            title="Time",
         ),
         height=650,
         template="plotly_white",
-        legend=dict(
-            bgcolor="white",
-            bordercolor="#E5E7EB",
-            borderwidth=1,
-            font=dict(color="#111827", size=11),
-        ),
+        font=dict(family="Times New Roman"),
     )
     return fig
 
@@ -1064,30 +997,10 @@ def plot_weights_over_time(results):
     df = results["weights_df"]
     fig = px.area(df, x=df.index, y=df.columns)
     fig.update_layout(
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        font=dict(color="#111827", family="Times New Roman"),
         title="ERC Weights Over Time (stacked)",
         height=500,
         template="plotly_white",
-        legend=dict(
-            bgcolor="white",
-            bordercolor="#E5E7EB",
-            borderwidth=1,
-            font=dict(color="#111827", size=11),
-        ),
-        xaxis=dict(
-            showgrid=True,
-            gridcolor="#E5E7EB",
-            linecolor="#111827",
-            tickfont=dict(color="#111827"),
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor="#E5E7EB",
-            linecolor="#111827",
-            tickfont=dict(color="#111827"),
-        ),
+        font=dict(family="Times New Roman"),
     )
     return fig
 
@@ -1099,30 +1012,10 @@ def plot_risk_evolution(results):
     fig = px.line(df, x=df.index, y=df.columns)
     fig.update_layout(
         title="Risk Contribution Evolution (target: equal risk)",
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        font=dict(color="#111827", family="Times New Roman"),
         yaxis_title="Risk Contribution (%)",
         height=500,
         template="plotly_white",
-        legend=dict(
-            bgcolor="white",
-            bordercolor="#E5E7EB",
-            borderwidth=1,
-            font=dict(color="#111827", size=11),
-        ),
-        xaxis=dict(
-            showgrid=True,
-            gridcolor="#E5E7EB",
-            linecolor="#111827",
-            tickfont=dict(color="#111827"),
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor="#E5E7EB",
-            linecolor="#111827",
-            tickfont=dict(color="#111827"),
-        ),
+        font=dict(family="Times New Roman"),
     )
     return fig
 
@@ -1141,30 +1034,10 @@ def plot_country_exposure_over_time(results):
             )
         )
     fig.update_layout(
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        font=dict(color="#111827", family="Times New Roman"),
         yaxis_title="Exposure (%)",
         height=500,
         template="plotly_white",
-        legend=dict(
-            bgcolor="white",
-            bordercolor="#E5E7EB",
-            borderwidth=1,
-            font=dict(color="#111827", size=11),
-        ),
-        xaxis=dict(
-            showgrid=True,
-            gridcolor="#E5E7EB",
-            linecolor="#111827",
-            tickfont=dict(color="#111827"),
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor="#E5E7EB",
-            linecolor="#111827",
-            tickfont=dict(color="#111827"),
-        ),
+        font=dict(family="Times New Roman"),
     )
     return fig
 
@@ -1188,7 +1061,6 @@ def create_pdf_report(results):
     pdf.add_page()
     pdf.set_font("Helvetica", size=12)
 
-    # Executive summary
     pdf.set_font("Helvetica", "B", 14)
     pdf.cell(0, 10, "1. Executive Summary", ln=True)
     pdf.ln(5)
@@ -1225,7 +1097,6 @@ def create_pdf_report(results):
         with io.BytesIO(img_bytes) as img_stream:
             pdf.image(img_stream, x=10, w=190)
 
-    # Add plots
     fig_cum = plot_cumulative_performance(results)
     add_plot_to_pdf(fig_cum, "2. Cumulative Performance (ERC vs EW vs S&P 500)")
 
@@ -1253,7 +1124,6 @@ tab0, tab1, tab2, tab3, tab4 = st.tabs(
 
 # ---------- TAB 0: INTRO ----------
 with tab0:
-    # Intro card (pure HTML)
     st.markdown(
         """
         <div class="content-card">
@@ -1268,7 +1138,6 @@ with tab0:
         unsafe_allow_html=True,
     )
 
-    # Title outside of any card
     st.markdown("### 1. How to use the app in 3 steps")
 
     col_step1, col_step2, col_step3 = st.columns(3)
@@ -1429,7 +1298,6 @@ with tab2:
     if "results" in st.session_state:
         res = st.session_state.results
 
-        # Top metrics in "card-like" metrics (styled via CSS)
         m1, m2, m3, m4, m5 = st.columns(5)
         with m1:
             st.metric("Excess return (ERC)", f"{res['expected_return']:.2f}%")
@@ -1476,7 +1344,6 @@ This isolates the effect of the **allocation method** (ERC vs EW), independently
         st.subheader("Country exposure (ERC)")
         st.plotly_chart(plot_country_exposure_over_time(res), use_container_width=True)
 
-        # Snapshot of last allocation
         try:
             last_date = res["weights_df"].index.max()
             last_w = res["weights_df"].loc[last_date]
@@ -1607,7 +1474,6 @@ of the selected asset universe (over the full available history in the chosen pe
 
 # ---------- TAB 4: ABOUT ----------
 with tab4:
-    # First card: About the app only
     st.markdown(
         """
         <div class="content-card">
@@ -1635,7 +1501,6 @@ with tab4:
         unsafe_allow_html=True,
     )
 
-    # Second card: separate "Our Team" section
     st.markdown(
         """
         <div class="content-card-narrow">
