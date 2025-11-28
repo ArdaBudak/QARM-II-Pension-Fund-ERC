@@ -177,7 +177,7 @@ st.markdown(
     }}
 
     .stTabs [data-baseweb="tab"][aria-selected="true"] p {{
-        color: "{PRIMARY_HOVER}";
+        color: {PRIMARY_HOVER};
         font-weight: 600 !important;
     }}
 
@@ -224,57 +224,65 @@ st.markdown(
         box-shadow: 0 8px 18px rgba(0,0,0,0.12);
     }}
 
-    /* INPUTS & SELECTORS: make choices readable (white background, dark text) */
+    /* INPUTS & SELECTORS */
 
-    /* Date inputs */
-    .stDateInput input {{
-        background-color: #FFFFFF !important;
-        color: #111827 !important;
+    /* Date inputs: wrapper bubble in dark color */
+    .stDateInput > div[data-baseweb="input"] {{
+        background-color: {PRIMARY_COLOR} !important;
+        color: {BUTTON_TEXT} !important;
         border-radius: 10px !important;
-        border: 1px solid #D1D5DB !important;
+        border: 1px solid #4B5563 !important;
+    }}
+
+    /* Actual text field inside */
+    .stDateInput input {{
+        background-color: transparent !important;
+        color: {BUTTON_TEXT} !important;
+        border-radius: 10px !important;
+        border: none !important;
     }}
 
     /* Selectbox & Multiselect containers */
     .stSelectbox > div[data-baseweb="select"],
     .stMultiSelect > div[data-baseweb="select"] {{
-        background-color: #FFFFFF !important;
-        color: #111827 !important;
+        background-color: #111827 !important;
+        color: #F9FAFB !important;
         border-radius: 10px !important;
-        border: 1px solid #D1D5DB !important;
+        border: 1px solid #4B5563 !important;
         min-height: 40px;
     }}
 
     /* Selected text / placeholder inside selects */
     .stSelectbox div[data-baseweb="select"] span,
     .stMultiSelect div[data-baseweb="select"] span {{
-        color: #111827 !important;
+        color: #F9FAFB !important;
     }}
 
     /* Dropdown menu for options */
     div[role="listbox"] {{
-        background-color: #FFFFFF !important;
-        color: #111827 !important;
+        background-color: #111827 !important;
+        color: #F9FAFB !important;
         border-radius: 10px !important;
-        border: 1px solid #D1D5DB !important;
+        border: 1px solid #4B5563 !important;
     }}
 
     /* Individual options */
     div[role="option"] {{
-        color: #111827 !important;
+        color: #F9FAFB !important;
     }}
 
     div[role="option"][aria-selected="true"] {{
-        background-color: #E5E7EB !important;
+        background-color: #4B5563 !important;
     }}
 
     /* TAGS */
     span[data-baseweb="tag"] {{
-        background-color: #E5E7EB !important;
-        color: {TEXT_COLOR} !important;
-        border: 1px solid #D1D5DB;
+        background-color: #4B5563 !important;
+        color: #F9FAFB !important;
+        border: 1px solid #6B7280;
     }}
 
-    /* TYPOGRAPHY: avoid overriding all spans/divs to keep widgets readable */
+    /* TYPOGRAPHY */
     h1, h2, h3, h4, h5, h6, .stHeader, p, label {{
         color: {TEXT_COLOR} !important;
         font-family: 'Times New Roman', serif;
