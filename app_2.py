@@ -340,6 +340,12 @@ st.markdown(
         box-shadow: 0 6px 18px rgba(0,0,0,0.04);
     }}
 
+    /* >>> CHANGEMENT: forcer le texte des st.metric (valeurs + légendes) en foncé <<< */
+    div[data-testid="stMetric"],
+    div[data-testid="stMetric"] * {{
+        color: #111827 !important;
+    }}
+
     /* COLUMNS CARD LOOK (for the 3 steps) */
     .three-step-card {{
         background-color: #FFFFFF;
@@ -394,6 +400,13 @@ st.markdown(
         gap: 1.25rem;
         justify-content: space-between;
         flex-wrap: wrap;
+    }}
+
+    /* >>> CHANGEMENT: Forcer le texte des légendes / labels Plotly en foncé <<< */
+    .js-plotly-plot .legend text,
+    .js-plotly-plot text {{
+        fill: #111827 !important;
+        color: #111827 !important;
     }}
 
     /* PRINT MODE */
@@ -919,10 +932,28 @@ def plot_monte_carlo(dates, median, p95, p05):
         title="Long-Term Monte Carlo Projection (Historical Bootstrap)",
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="black", family="Times New Roman"),
+        font=dict(color="#111827", family="Times New Roman"),
         yaxis_title="Portfolio Value ($)",
         height=600,
         template="plotly_white",
+        legend=dict(
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="#E5E7EB",
+            borderwidth=1,
+            font=dict(color="#111827")
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(156,163,175,0.35)",
+            tickfont=dict(color="#111827"),
+            titlefont=dict(color="#111827")
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(156,163,175,0.35)",
+            tickfont=dict(color="#111827"),
+            titlefont=dict(color="#111827")
+        ),
     )
     return fig
 
@@ -956,7 +987,7 @@ def plot_cumulative_performance(results):
                 y=cum_ew.values,
                 mode="lines",
                 name="Equal-Weight (same assets)",
-                line=dict(color="#9CA3AF", width=2, dash="dot"),
+                line=dict(color="#374151", width=2, dash="dot"),
             )
         )
 
@@ -1006,11 +1037,30 @@ def plot_cumulative_performance(results):
         title="Cumulative Excess Return (ERC vs EW vs S&P 500, log scale)",
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="black", family="Times New Roman"),
+        font=dict(color="#111827", family="Times New Roman"),
         yaxis_title="Growth of $1 (log)",
-        yaxis=dict(type="log", dtick=nice_dtick, tickformat=".2f", minor=dict(showgrid=False)),
+        yaxis=dict(
+            type="log",
+            dtick=nice_dtick,
+            tickformat=".2f",
+            minor=dict(showgrid=False),
+            tickfont=dict(color="#111827"),
+            titlefont=dict(color="#111827"),
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(156,163,175,0.35)",
+            tickfont=dict(color="#111827"),
+            titlefont=dict(color="#111827"),
+        ),
         height=650,
         template="plotly_white",
+        legend=dict(
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="#E5E7EB",
+            borderwidth=1,
+            font=dict(color="#111827")
+        ),
     )
     return fig
 
@@ -1021,10 +1071,28 @@ def plot_weights_over_time(results):
     fig.update_layout(
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="black", family="Times New Roman"),
+        font=dict(color="#111827", family="Times New Roman"),
         title="ERC Weights Over Time (stacked)",
         height=500,
         template="plotly_white",
+        legend=dict(
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="#E5E7EB",
+            borderwidth=1,
+            font=dict(color="#111827")
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(156,163,175,0.35)",
+            tickfont=dict(color="#111827"),
+            titlefont=dict(color="#111827"),
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(156,163,175,0.35)",
+            tickfont=dict(color="#111827"),
+            titlefont=dict(color="#111827"),
+        ),
     )
     return fig
 
@@ -1038,10 +1106,28 @@ def plot_risk_evolution(results):
         title="Risk Contribution Evolution (target: equal risk)",
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="black", family="Times New Roman"),
+        font=dict(color="#111827", family="Times New Roman"),
         yaxis_title="Risk Contribution (%)",
         height=500,
         template="plotly_white",
+        legend=dict(
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="#E5E7EB",
+            borderwidth=1,
+            font=dict(color="#111827")
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(156,163,175,0.35)",
+            tickfont=dict(color="#111827"),
+            titlefont=dict(color="#111827"),
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(156,163,175,0.35)",
+            tickfont=dict(color="#111827"),
+            titlefont=dict(color="#111827"),
+        ),
     )
     return fig
 
@@ -1062,10 +1148,28 @@ def plot_country_exposure_over_time(results):
     fig.update_layout(
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="black", family="Times New Roman"),
+        font=dict(color="#111827", family="Times New Roman"),
         yaxis_title="Exposure (%)",
         height=500,
         template="plotly_white",
+        legend=dict(
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="#E5E7EB",
+            borderwidth=1,
+            font=dict(color="#111827")
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(156,163,175,0.35)",
+            tickfont=dict(color="#111827"),
+            titlefont=dict(color="#111827"),
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(156,163,175,0.35)",
+            tickfont=dict(color="#111827"),
+            titlefont=dict(color="#111827"),
+        ),
     )
     return fig
 
