@@ -240,6 +240,53 @@ st.markdown(
         border: 1px solid #E5E7EB;
     }}
 
+    /* TEAM CARDS */
+    .team-card {{
+        background-color: #FFFFFF;
+        border-radius: 18px;
+        padding: 1.4rem 1.2rem 1.6rem 1.2rem;
+        box-shadow: 0 10px 28px rgba(0,0,0,0.06);
+        border: 1px solid #E5E7EB;
+        text-align: center;
+        height: 100%;
+    }}
+
+    .team-photo {{
+        width: 130px;
+        height: 130px;
+        border-radius: 50%;
+        object-fit: cover;
+        object-position: center top;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    }}
+
+    .team-name {{
+        font-weight: 700;
+        font-size: 1.02rem;
+        margin-bottom: 0.15rem;
+    }}
+
+    .team-role {{
+        font-weight: 600;
+        font-size: 0.96rem;
+        margin-bottom: 0.6rem;
+        color: #4B5563 !important;
+    }}
+
+    .team-desc {{
+        font-size: 0.92rem;
+        line-height: 1.5;
+        color: #111827 !important;
+    }}
+
+    .team-row {{
+        display: flex;
+        gap: 1.25rem;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }}
+
     /* PRINT MODE */
     @media print {{
         section[data-testid="stSidebar"], 
@@ -1439,9 +1486,15 @@ with tab4:
     ]
 
     cols = st.columns(len(team))
-    for i, member in enumerate(team):
-        with cols[i]:
-            st.image(member["photo"], width=150)
-            st.markdown(f"#### {member['name']}")
-            st.markdown(f"**{member['role']}**")
-            st.write(member["desc"])
+    for col, member in zip(cols, team):
+        col.markdown(
+            f"""
+            <div class="team-card">
+                <img src="{member['photo']}" class="team-photo" />
+                <div class="team-name">{member['name']}</div>
+                <div class="team-role">{member['role']}</div>
+                <div class="team-desc">{member['desc']}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
