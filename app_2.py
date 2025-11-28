@@ -1031,13 +1031,13 @@ such as a **pension fund**, who aims to allocate **risk**, not just capital, acr
     st.markdown("</div>", unsafe_allow_html=True)
 
     with col_step3:
-        st.markdown('<div class="three-step-card">', unsafe_allow_html=True)
-        st.markdown("#### 3. Analyze")
-        st.markdown(
-            "Compare performance vs EW and vs the S&P 500, review **risk contributions**, "
-            "and inspect **country exposures**."
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown('<div class="three-step-card">', unsafe_allow_html=True)
+    st.markdown("#### 3. Analyze")
+    st.markdown(
+        "Compare performance vs EW and vs the S&P 500, review **risk contributions**, "
+        "and inspect **country exposures**."
+    )
+    st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown(
         """
