@@ -111,31 +111,70 @@ st.markdown(
         overflow-y: auto;
     }}
 
-    /* STICKY TAB BAR */
+    /* STICKY TAB BAR - CENTERED FLOATING PILL */
     div[data-baseweb="tab-list"] {{
         position: -webkit-sticky !important;
         position: sticky !important;
-        top: 0 !important;
+        top: 0.35rem !important;
         z-index: 999 !important;
-        background-color: #F9FAFB !important;
-        padding-top: 0.8rem;
-        padding-bottom: 0.6rem;
-        border-bottom: 1px solid #E5E7EB;
-        box-shadow: 0 4px 4px -2px rgba(0,0,0,0.04);
+
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 0.35rem;
+
+        width: fit-content;
+        max-width: 100%;
+        margin: 0 auto 0.6rem auto;
+
+        padding: 0.45rem 0.85rem;
+        border-radius: 999px;
+
+        background: rgba(249, 250, 251, 0.90) !important;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+
+        border: 1px solid #E5E7EB;
+        box-shadow: 0 12px 30px -12px rgba(15, 23, 42, 0.45);
     }}
 
     div[data-baseweb="tab"] {{
-        padding: 0.3rem 1.4rem !important;
+        padding: 0.35rem 1.35rem !important;
         font-family: 'Times New Roman', serif !important;
         font-weight: 600 !important;
-        font-size: 0.96rem !important;
+        font-size: 0.92rem !important;
+
+        border-radius: 999px !important;
+        border: none !important;
+
+        color: #6B7280 !important;
+        background-color: transparent !important;
+
+        transition:
+            color 0.18s ease,
+            background-color 0.18s ease,
+            transform 0.18s ease,
+            box-shadow 0.18s ease;
     }}
 
+    /* Active tab */
+    div[data-baseweb="tab"][aria-selected="true"] {{
+        color: #111827 !important;
+        background-color: #FFFFFF !important;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.30);
+        transform: translateY(-1px);
+    }}
+
+    /* Sliding underline highlight */
     div[data-baseweb="tab-highlight"] {{
-        background-color: transparent !important;
-        border-bottom: 2px solid {TAB_UNDERLINE} !important;
-        border-radius: 0 !important;
-        margin-bottom: -0.6rem !important;
+        background-color: {TAB_UNDERLINE} !important;
+        border-radius: 999px !important;
+
+        height: 3px !important;
+        bottom: 0 !important;
+        margin-bottom: 0 !important;
+
+        transition: all 0.25s ease-in-out !important;
     }}
 
     .stSidebar {{
