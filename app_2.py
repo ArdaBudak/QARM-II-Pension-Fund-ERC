@@ -111,69 +111,83 @@ st.markdown(
         overflow-y: auto;
     }}
 
-    /* STICKY TAB BAR - CENTERED FLOATING PILL */
-    div[data-baseweb="tab-list"] {{
+    /* =========================
+       STICKY TOP TAB BAR - UNDERLINE STYLE
+       ========================= */
+    .stTabs [data-baseweb="tab-list"] {{
         position: -webkit-sticky !important;
         position: sticky !important;
         top: 0.35rem !important;
         z-index: 999 !important;
 
         display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        gap: 0.35rem;
+        align-items: flex-end !important;
+        gap: 2rem;
 
-        width: fit-content;
-        max-width: 100%;
-        margin: 0 auto 0.6rem auto;
+        width: 100%;
+        margin: 0 0 0.8rem 0;
 
-        padding: 0.45rem 0.85rem;
-        border-radius: 999px;
+        padding-left: 0;
+        padding-right: 0;
 
-        background: rgba(249, 250, 251, 0.90) !important;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-
-        border: 1px solid #E5E7EB;
-        box-shadow: 0 12px 30px -12px rgba(15, 23, 42, 0.45);
+        background-color: {LIGHT_BG};
+        /* thin line across full width */
+        background-image: linear-gradient(
+            to bottom,
+            transparent calc(100% - 1px),
+            #E5E7EB calc(100% - 1px)
+        );
     }}
 
-    div[data-baseweb="tab"] {{
-        padding: 0.35rem 1.35rem !important;
-        font-family: 'Times New Roman', serif !important;
-        font-weight: 600 !important;
-        font-size: 0.92rem !important;
-
-        border-radius: 999px !important;
-        border: none !important;
-
-        color: #6B7280 !important;
+    .stTabs [data-baseweb="tab"] {{
         background-color: transparent !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        border: none !important;
+        margin: 0;
+        padding: 0 0 10px 0 !important;
 
+        border-bottom: 3px solid transparent;
         transition:
-            color 0.18s ease,
-            background-color 0.18s ease,
-            transform 0.18s ease,
-            box-shadow 0.18s ease;
+            border-color 0.25s ease-out,
+            color 0.25s ease-out,
+            transform 0.18s ease;
     }}
 
-    /* Active tab */
-    div[data-baseweb="tab"][aria-selected="true"] {{
-        color: #111827 !important;
-        background-color: #FFFFFF !important;
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.30);
-        transform: translateY(-1px);
+    .stTabs [data-baseweb="tab"] p {{
+        font-family: 'Times New Roman', serif !important;
+        font-weight: 500 !important;
+        font-size: 0.95rem !important;
+        margin: 0;
+        color: #6B7280;  /* grey inactive */
     }}
 
-    /* Sliding underline highlight */
-    div[data-baseweb="tab-highlight"] {{
+    .stTabs [data-baseweb="tab"]:focus {{
+        outline: none !important;
+        box-shadow: none !important;
+    }}
+
+    .stTabs [data-baseweb="tab"]:hover p {{
+        color: #374151;
+    }}
+
+    /* Active tab: darker text + thicker underline */
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+        border-bottom: 3px solid {TAB_UNDERLINE};
+    }}
+
+    .stTabs [data-baseweb="tab"][aria-selected="true"] p {{
+        color: "{PRIMARY_HOVER}";
+        font-weight: 600 !important;
+    }}
+
+    /* Sliding highlight bar under the active tab (barre glissante) */
+    .stTabs [data-baseweb="tab-highlight"] {{
         background-color: {TAB_UNDERLINE} !important;
         border-radius: 999px !important;
-
         height: 3px !important;
         bottom: 0 !important;
         margin-bottom: 0 !important;
-
         transition: all 0.25s ease-in-out !important;
     }}
 
@@ -1074,11 +1088,11 @@ def create_pdf_report(results):
 # =========================
 tab0, tab1, tab2, tab3, tab4 = st.tabs(
     [
-        "1. How to Use",
-        "2. Asset Selection & Setup",
-        "3. ERC Portfolio Results",
-        "4. Long-Term Projections",
-        "5. About Us",
+        "How to Use",
+        "Asset Selection & Setup",
+        "ERC Portfolio Results",
+        "Long-Term Projections",
+        "About Us",
     ]
 )
 
@@ -1100,7 +1114,7 @@ with tab0:
     )
 
     # Title outside of any card
-    st.markdown("### How to use the app in 3 steps")
+    st.markdown("### 1. How to use the app in 3 steps")
 
     col_step1, col_step2, col_step3 = st.columns(3)
 
@@ -1261,7 +1275,7 @@ with tab1:
                         )
                         if results:
                             st.session_state.results = results
-                            st.success("Portfolio results are ready. Go to **3. ERC Portfolio Results**.")
+                            st.success("Portfolio results are ready. Go to **ERC Portfolio Results**.")
         else:
             st.error("The end date must be strictly after the start date.")
 
@@ -1372,7 +1386,7 @@ The key takeaway is **how ERC reshapes the risk allocation** compared to a simpl
                     st.error(f"PDF generation error: {e}")
                     st.warning("Make sure 'kaleido' and 'fpdf2' are installed in the environment.")
     else:
-        st.info("Please run the optimization first in **2. Asset Selection & Setup**.")
+        st.info("Please run the optimization first in **Asset Selection & Setup**.")
 
 # ---------- TAB 3: MONTE CARLO ----------
 with tab3:
@@ -1446,7 +1460,7 @@ of the selected asset universe (over the full available history in the chosen pe
             else:
                 st.error("Insufficient historical data to run the bootstrap simulation.")
     else:
-        st.info("Please optimize a portfolio in **2. Asset Selection & Setup** first.")
+        st.info("Please optimize a portfolio in **Asset Selection & Setup** first.")
 
 # ---------- TAB 4: ABOUT ----------
 with tab4:
