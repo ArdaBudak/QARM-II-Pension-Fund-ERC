@@ -163,7 +163,7 @@ st.markdown(
     .stButton>button:hover {{
         background-color: {PRIMARY_HOVER};
         transform: translateY(-1px);
-        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 8px 18px rgba(0,0,0,0.12);
     }}
 
     /* TAGS */
@@ -201,7 +201,7 @@ st.markdown(
         font-size: 0.97rem;
     }}
 
-    /* GENERAL CARD STYLE */
+    /* GENERAL CARD STYLE (for pure HTML blocks) */
     .content-card {{
         max-width: 1000px;
         margin: 1.5rem auto 1.8rem auto;
@@ -222,8 +222,8 @@ st.markdown(
         border: 1px solid #E5E7EB;
     }}
 
-    /* METRIC CARDS */
-    .metric-card {{
+    /* METRIC LOOK (no wrapper needed) */
+    div[data-testid="stMetric"] {{
         padding: 0.9rem 1.1rem;
         border-radius: 14px;
         background-color: #F9FAFB;
@@ -998,55 +998,78 @@ tab0, tab1, tab2, tab3, tab4 = st.tabs(
 
 # ---------- TAB 0: INTRO ----------
 with tab0:
-    st.markdown('<div class="content-card">', unsafe_allow_html=True)
-
-    st.markdown("## 👋 Welcome to the Pension Fund Optimizer")
+    # Intro card (pure HTML)
     st.markdown(
         """
-This application implements an **Equal Risk Contribution (ERC)** portfolio optimization for a long-horizon investor  
-such as a **pension fund**, who aims to allocate **risk**, not just capital, across asset classes.
-
-### How to use the app in 3 steps
-"""
+        <div class="content-card">
+            <h2>👋 Welcome to the Pension Fund Optimizer</h2>
+            <p>
+            This application implements an <strong>Equal Risk Contribution (ERC)</strong> portfolio optimization
+            for a long-horizon investor such as a <strong>pension fund</strong>, who aims to allocate
+            <strong>risk</strong>, not just capital, across asset classes.
+            </p>
+            <h3>How to use the app in 3 steps</h3>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     col_step1, col_step2, col_step3 = st.columns(3)
 
     with col_step1:
-        st.markdown('<div class="three-step-card">', unsafe_allow_html=True)
-        st.markdown("#### 1. Select")
         st.markdown(
-            "Choose your investment **period** and select the universe of **stocks** and **ETFs** "
-            "you want to work with."
+            """
+            <div class="three-step-card">
+                <h4>1. Select</h4>
+                <p>
+                    Choose your investment <strong>period</strong> and select the universe of
+                    <strong>stocks</strong> and <strong>ETFs</strong> you want to work with.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with col_step2:
-        st.markdown('<div class="three-step-card">', unsafe_allow_html=True)
-        st.markdown("#### 2. Optimize")
         st.markdown(
-            "Run the **ERC optimization** and, for comparison, an **Equal-Weight (EW)** portfolio "
-            "on the **same assets**."
+            """
+            <div class="three-step-card">
+                <h4>2. Optimize</h4>
+                <p>
+                    Run the <strong>ERC optimization</strong> and, for comparison,
+                    an <strong>Equal-Weight (EW)</strong> portfolio on the <strong>same assets</strong>.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with col_step3:
-        st.markdown('<div class="three-step-card">', unsafe_allow_html=True)
-        st.markdown("#### 3. Analyze")
         st.markdown(
-            "Compare performance vs EW and vs the S&P 500, review **risk contributions**, "
-            "and inspect **country exposures**."
+            """
+            <div class="three-step-card">
+                <h4>3. Analyze</h4>
+                <p>
+                    Compare performance vs EW and vs the S&amp;P 500,
+                    review <strong>risk contributions</strong>, and inspect
+                    <strong>country exposures</strong>.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-        st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown(
         """
-The goal is not simply to “beat the market at all costs”, but to illustrate how ERC reshapes  
-the **risk allocation profile** of a multi-asset portfolio compared to a naive Equal-Weight rule.
-"""
+        <div class="content-card">
+            <p>
+            The goal is not simply to “beat the market at all costs”, but to illustrate how ERC reshapes  
+            the <strong>risk allocation profile</strong> of a multi-asset portfolio compared to a naive Equal-Weight rule.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
-
-    st.markdown("</div>", unsafe_allow_html=True)
 
     with st.expander("Optional embedded assistant"):
         components.html(
@@ -1083,8 +1106,15 @@ with tab1:
     if custom_data.empty:
         st.error("Data loading error. Please verify your parquet files.")
     else:
-        st.markdown('<div class="content-card-narrow">', unsafe_allow_html=True)
-        st.markdown("## 2. Asset Selection & Setup")
+        st.markdown(
+            """
+            <div class="content-card">
+                <h2>2. Asset Selection &amp; Setup</h2>
+                <p>Select the investment period, choose the investable universe, and configure the rebalancing rule.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
         min_date = custom_data.index.min().date()
         max_date = datetime(2024, 12, 31).date()
@@ -1125,9 +1155,8 @@ with tab1:
 """
             )
 
-            st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("---")
 
-            st.markdown('<div class="content-card-narrow">', unsafe_allow_html=True)
             if st.button("Run ERC optimization"):
                 if len(selected_assets) < 3:
                     st.error("Please select at least **3 assets** to build a diversified ERC portfolio.")
@@ -1145,7 +1174,6 @@ with tab1:
                         if results:
                             st.session_state.results = results
                             st.success("Portfolio results are ready. Go to **3. ERC Portfolio Results**.")
-            st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.error("The end date must be strictly after the start date.")
 
@@ -1156,30 +1184,18 @@ with tab2:
     if "results" in st.session_state:
         res = st.session_state.results
 
-        st.markdown('<div class="content-card">', unsafe_allow_html=True)
-
-        # Top metrics in metric cards
+        # Top metrics in "card-like" metrics (styled via CSS)
         m1, m2, m3, m4, m5 = st.columns(5)
         with m1:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             st.metric("Excess return (ERC)", f"{res['expected_return']:.2f}%")
-            st.markdown("</div>", unsafe_allow_html=True)
         with m2:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             st.metric("Volatility (ERC)", f"{res['volatility']:.2f}%")
-            st.markdown("</div>", unsafe_allow_html=True)
         with m3:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             st.metric("Sharpe (ERC)", f"{res['sharpe']:.2f}")
-            st.markdown("</div>", unsafe_allow_html=True)
         with m4:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             st.metric("Max drawdown (ERC)", f"{res['max_drawdown']:.2f}%")
-            st.markdown("</div>", unsafe_allow_html=True)
         with m5:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             st.metric("Transaction costs (ERC)", f"{res['total_tc']:.2f}%")
-            st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown("### Method-level comparison: ERC vs Equal-Weight")
 
@@ -1267,8 +1283,6 @@ The key takeaway is **how ERC reshapes the risk allocation** compared to a simpl
                 except Exception as e:
                     st.error(f"PDF generation error: {e}")
                     st.warning("Make sure 'kaleido' and 'fpdf2' are installed in the environment.")
-
-        st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("Please run the optimization first in **2. Asset Selection & Setup**.")
 
@@ -1285,8 +1299,6 @@ We require at least **60 months of non-missing historical data** to obtain stati
 
     if "results" in st.session_state:
         res = st.session_state.results
-
-        st.markdown('<div class="content-card-narrow">', unsafe_allow_html=True)
 
         c1, c2 = st.columns(2)
         initial_inv = c1.number_input("Initial investment ($)", value=100000, step=10000)
@@ -1345,37 +1357,39 @@ of the selected asset universe (over the full available history in the chosen pe
                 )
             else:
                 st.error("Insufficient historical data to run the bootstrap simulation.")
-
-        st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("Please optimize a portfolio in **2. Asset Selection & Setup** first.")
 
 # ---------- TAB 4: ABOUT ----------
 with tab4:
-    st.markdown('<div class="content-card">', unsafe_allow_html=True)
-
-    st.markdown("## 5. About Us")
-    st.write(
+    st.markdown(
         """
-The **Pension Fund Optimizer** is a didactic tool designed to showcase how  
-**Equal Risk Contribution (ERC)** portfolios can be constructed and evaluated in practice.
-
-By combining academic asset-allocation techniques with a clear visual interface,  
-the app allows you to:
-
-- select a universe of stocks and ETFs,  
-- run ERC and Equal-Weight backtests with realistic transaction costs,  
-- compare performance and risk metrics,  
-- and explore long-term scenarios via Monte Carlo simulation.
-
-Built with **Streamlit**, **NumPy**, **Pandas**, **CVXPY**, and **Plotly**,  
-the tool is fully transparent and intended for educational and illustration purposes.
-"""
+        <div class="content-card">
+            <h2>5. About Us</h2>
+            <p>
+            The <strong>Pension Fund Optimizer</strong> is a didactic tool designed to showcase how  
+            <strong>Equal Risk Contribution (ERC)</strong> portfolios can be constructed and evaluated in practice.
+            </p>
+            <p>
+            By combining academic asset-allocation techniques with a clear visual interface,  
+            the app allows you to:
+            </p>
+            <ul>
+                <li>select a universe of stocks and ETFs,</li>
+                <li>run ERC and Equal-Weight backtests with realistic transaction costs,</li>
+                <li>compare performance and risk metrics,</li>
+                <li>and explore long-term scenarios via Monte Carlo simulation.</li>
+            </ul>
+            <p>
+            Built with <strong>Streamlit</strong>, <strong>NumPy</strong>, <strong>Pandas</strong>, <strong>CVXPY</strong>, and <strong>Plotly</strong>,  
+            the tool is fully transparent and intended for educational and illustration purposes.
+            </p>
+            <hr/>
+            <h3>👥 Project Team</h3>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
-
-    st.markdown("---")
-    st.markdown("### 👥 Project Team")
-    st.markdown("<br>", unsafe_allow_html=True)
 
     team = [
         {
@@ -1417,5 +1431,3 @@ the tool is fully transparent and intended for educational and illustration purp
             st.markdown(f"#### {member['name']}")
             st.markdown(f"**{member['role']}**")
             st.write(member["desc"])
-
-    st.markdown("</div>", unsafe_allow_html=True)
