@@ -331,13 +331,20 @@ st.markdown(
         border: 1px solid #E5E7EB;
     }}
 
-    /* METRIC LOOK (no wrapper needed) */
+    /* METRIC LOOK (container) */
     div[data-testid="stMetric"] {{
         padding: 0.9rem 1.1rem;
         border-radius: 14px;
         background-color: #F9FAFB;
         border: 1px solid #E5E7EB;
         box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+    }}
+
+    /* FORCE METRIC TEXT TO DARK (labels, values, deltas) */
+    [data-testid="stMetricLabel"],
+    [data-testid="stMetricValue"],
+    [data-testid="stMetricDelta"] {{
+        color: #111827 !important;
     }}
 
     /* COLUMNS CARD LOOK (for the 3 steps) */
@@ -919,10 +926,28 @@ def plot_monte_carlo(dates, median, p95, p05):
         title="Long-Term Monte Carlo Projection (Historical Bootstrap)",
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="black", family="Times New Roman"),
+        font=dict(color="#111827", family="Times New Roman"),
         yaxis_title="Portfolio Value ($)",
         height=600,
         template="plotly_white",
+        legend=dict(
+            bgcolor="white",
+            bordercolor="#E5E7EB",
+            borderwidth=1,
+            font=dict(color="#111827", size=11),
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="#E5E7EB",
+            linecolor="#111827",
+            tickfont=dict(color="#111827"),
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="#E5E7EB",
+            linecolor="#111827",
+            tickfont=dict(color="#111827"),
+        ),
     )
     return fig
 
@@ -1006,11 +1031,31 @@ def plot_cumulative_performance(results):
         title="Cumulative Excess Return (ERC vs EW vs S&P 500, log scale)",
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="black", family="Times New Roman"),
+        font=dict(color="#111827", family="Times New Roman"),
         yaxis_title="Growth of $1 (log)",
-        yaxis=dict(type="log", dtick=nice_dtick, tickformat=".2f", minor=dict(showgrid=False)),
+        yaxis=dict(
+            type="log",
+            dtick=nice_dtick,
+            tickformat=".2f",
+            minor=dict(showgrid=False),
+            tickfont=dict(color="#111827"),
+            linecolor="#111827",
+            gridcolor="#E5E7EB",
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="#E5E7EB",
+            linecolor="#111827",
+            tickfont=dict(color="#111827"),
+        ),
         height=650,
         template="plotly_white",
+        legend=dict(
+            bgcolor="white",
+            bordercolor="#E5E7EB",
+            borderwidth=1,
+            font=dict(color="#111827", size=11),
+        ),
     )
     return fig
 
@@ -1021,10 +1066,28 @@ def plot_weights_over_time(results):
     fig.update_layout(
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="black", family="Times New Roman"),
+        font=dict(color="#111827", family="Times New Roman"),
         title="ERC Weights Over Time (stacked)",
         height=500,
         template="plotly_white",
+        legend=dict(
+            bgcolor="white",
+            bordercolor="#E5E7EB",
+            borderwidth=1,
+            font=dict(color="#111827", size=11),
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="#E5E7EB",
+            linecolor="#111827",
+            tickfont=dict(color="#111827"),
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="#E5E7EB",
+            linecolor="#111827",
+            tickfont=dict(color="#111827"),
+        ),
     )
     return fig
 
@@ -1038,10 +1101,28 @@ def plot_risk_evolution(results):
         title="Risk Contribution Evolution (target: equal risk)",
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="black", family="Times New Roman"),
+        font=dict(color="#111827", family="Times New Roman"),
         yaxis_title="Risk Contribution (%)",
         height=500,
         template="plotly_white",
+        legend=dict(
+            bgcolor="white",
+            bordercolor="#E5E7EB",
+            borderwidth=1,
+            font=dict(color="#111827", size=11),
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="#E5E7EB",
+            linecolor="#111827",
+            tickfont=dict(color="#111827"),
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="#E5E7EB",
+            linecolor="#111827",
+            tickfont=dict(color="#111827"),
+        ),
     )
     return fig
 
@@ -1062,10 +1143,28 @@ def plot_country_exposure_over_time(results):
     fig.update_layout(
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="black", family="Times New Roman"),
+        font=dict(color="#111827", family="Times New Roman"),
         yaxis_title="Exposure (%)",
         height=500,
         template="plotly_white",
+        legend=dict(
+            bgcolor="white",
+            bordercolor="#E5E7EB",
+            borderwidth=1,
+            font=dict(color="#111827", size=11),
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="#E5E7EB",
+            linecolor="#111827",
+            tickfont=dict(color="#111827"),
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="#E5E7EB",
+            linecolor="#111827",
+            tickfont=dict(color="#111827"),
+        ),
     )
     return fig
 
