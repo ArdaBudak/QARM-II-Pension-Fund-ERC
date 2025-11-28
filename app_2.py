@@ -1008,11 +1008,13 @@ with tab0:
             for a long-horizon investor such as a <strong>pension fund</strong>, who aims to allocate
             <strong>risk</strong>, not just capital, across asset classes.
             </p>
-            <h3>How to use the app in 3 steps</h3>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+    # Title outside of any card
+    st.markdown("### How to use the app in 3 steps")
 
     col_step1, col_step2, col_step3 = st.columns(3)
 
@@ -1020,7 +1022,7 @@ with tab0:
         st.markdown(
             """
             <div class="three-step-card">
-                <h4>1. Select</h4>
+                <h4>🧭 1. Select</h4>
                 <p>
                     Choose your investment <strong>period</strong> and select the universe of
                     <strong>stocks</strong> and <strong>ETFs</strong> you want to work with.
@@ -1034,7 +1036,7 @@ with tab0:
         st.markdown(
             """
             <div class="three-step-card">
-                <h4>2. Optimize</h4>
+                <h4>⚙️ 2. Optimize</h4>
                 <p>
                     Run the <strong>ERC optimization</strong> and, for comparison,
                     an <strong>Equal-Weight (EW)</strong> portfolio on the <strong>same assets</strong>.
@@ -1048,7 +1050,7 @@ with tab0:
         st.markdown(
             """
             <div class="three-step-card">
-                <h4>3. Analyze</h4>
+                <h4>📊 3. Analyze</h4>
                 <p>
                     Compare performance vs EW and vs the S&amp;P 500,
                     review <strong>risk contributions</strong>, and inspect
@@ -1362,6 +1364,7 @@ of the selected asset universe (over the full available history in the chosen pe
 
 # ---------- TAB 4: ABOUT ----------
 with tab4:
+    # First card: About the app only
     st.markdown(
         """
         <div class="content-card">
@@ -1384,8 +1387,19 @@ with tab4:
             Built with <strong>Streamlit</strong>, <strong>NumPy</strong>, <strong>Pandas</strong>, <strong>CVXPY</strong>, and <strong>Plotly</strong>,  
             the tool is fully transparent and intended for educational and illustration purposes.
             </p>
-            <hr/>
-            <h3>👥 Project Team</h3>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Second card: separate "Our Team" section
+    st.markdown(
+        """
+        <div class="content-card-narrow">
+            <h3>👥 Our Team</h3>
+            <p>
+            Meet the team behind the Pension Fund Optimizer.
+            </p>
         </div>
         """,
         unsafe_allow_html=True,
