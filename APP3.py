@@ -1,5 +1,3 @@
-Voilà la version avec les couleurs hardcodées supprimées pour laisser le thème light de Streamlit faire le boulot (je n’ai gardé que le strict minimum pour la mise en page et le header).
-
 import streamlit as st
 import pandas as pd
 import numpy as np
