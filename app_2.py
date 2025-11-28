@@ -203,7 +203,6 @@ st.markdown(
     /* PRIMARY BUTTONS */
     .stButton>button {{
         background-color: {PRIMARY_COLOR};
-        color: {BUTTON_TEXT};
         border-radius: 999px;
         padding: 0.55rem 1.5rem;
         font-family: 'Times New Roman', serif;
@@ -213,10 +212,59 @@ st.markdown(
         font-size: 0.96rem;
     }}
 
+    /* Ensure button text is always white and readable */
+    .stButton>button,
+    .stButton>button * {{
+        color: {BUTTON_TEXT} !important;
+    }}
+
     .stButton>button:hover {{
         background-color: {PRIMARY_HOVER};
         transform: translateY(-1px);
         box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+    }}
+
+    /* INPUTS & SELECTORS: make choices readable (white background, dark text) */
+
+    /* Date inputs */
+    .stDateInput input {{
+        background-color: #FFFFFF !important;
+        color: #111827 !important;
+        border-radius: 10px !important;
+        border: 1px solid #D1D5DB !important;
+    }}
+
+    /* Selectbox & Multiselect containers */
+    .stSelectbox > div[data-baseweb="select"],
+    .stMultiSelect > div[data-baseweb="select"] {{
+        background-color: #FFFFFF !important;
+        color: #111827 !important;
+        border-radius: 10px !important;
+        border: 1px solid #D1D5DB !important;
+        min-height: 40px;
+    }}
+
+    /* Selected text / placeholder inside selects */
+    .stSelectbox div[data-baseweb="select"] span,
+    .stMultiSelect div[data-baseweb="select"] span {{
+        color: #111827 !important;
+    }}
+
+    /* Dropdown menu for options */
+    div[role="listbox"] {{
+        background-color: #FFFFFF !important;
+        color: #111827 !important;
+        border-radius: 10px !important;
+        border: 1px solid #D1D5DB !important;
+    }}
+
+    /* Individual options */
+    div[role="option"] {{
+        color: #111827 !important;
+    }}
+
+    div[role="option"][aria-selected="true"] {{
+        background-color: #E5E7EB !important;
     }}
 
     /* TAGS */
@@ -226,8 +274,8 @@ st.markdown(
         border: 1px solid #D1D5DB;
     }}
 
-    /* TYPOGRAPHY */
-    h1, h2, h3, h4, h5, h6, .stHeader, p, label, span, div {{
+    /* TYPOGRAPHY: avoid overriding all spans/divs to keep widgets readable */
+    h1, h2, h3, h4, h5, h6, .stHeader, p, label {{
         color: {TEXT_COLOR} !important;
         font-family: 'Times New Roman', serif;
     }}
