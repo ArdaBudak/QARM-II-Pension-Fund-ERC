@@ -1023,7 +1023,7 @@ such as a **pension fund**, who aims to allocate **risk**, not just capital, acr
 
     with col_step2:
         st.markdown('<div class="three-step-card">', unsafe_allow_html=True)
-        st.markmarkdown("#### 2. Optimize")
+        st.markdown("#### 2. Optimize")
         st.markdown(
             "Run the **ERC optimization** and, for comparison, an **Equal-Weight (EW)** portfolio "
             "on the **same assets**."
