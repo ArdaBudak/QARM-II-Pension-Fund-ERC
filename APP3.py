@@ -153,6 +153,37 @@ st.markdown(
         border: 1px solid #E5E7EB;
     }}
 
+    /* METRIC BUBBLES */
+    .metric-card {{
+        background-color: #FFFFFF;
+        border-radius: 16px;
+        padding: 1.0rem 1.1rem;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.06);
+        border: 1px solid #E5E7EB;
+        text-align: left;
+    }}
+
+    .metric-label {{
+        font-size: 0.80rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        margin-bottom: 0.25rem;
+        color: #4B5563;
+    }}
+
+    .metric-value {{
+        font-size: 1.40rem;
+        font-weight: 700;
+        margin-bottom: 0.05rem;
+    }}
+
+    .metric-subtext {{
+        font-size: 0.80rem;
+        color: #6B7280;
+        margin-top: 0.15rem;
+    }}
+
     .team-card {{
         background-color: #FFFFFF;
         border-radius: 18px;
@@ -1102,17 +1133,58 @@ with tab2:
     if "results" in st.session_state:
         res = st.session_state.results
 
+        # ======= METRICS AS BUBBLES =======
         m1, m2, m3, m4, m5 = st.columns(5)
         with m1:
-            st.metric("Excess return (ERC)", f"{res['expected_return']:.2f}%")
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-label">Excess return (ERC)</div>
+                    <div class="metric-value">{res['expected_return']:.2f}%</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
         with m2:
-            st.metric("Volatility (ERC)", f"{res['volatility']:.2f}%")
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-label">Volatility (ERC)</div>
+                    <div class="metric-value">{res['volatility']:.2f}%</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
         with m3:
-            st.metric("Sharpe (ERC)", f"{res['sharpe']:.2f}")
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-label">Sharpe (ERC)</div>
+                    <div class="metric-value">{res['sharpe']:.2f}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
         with m4:
-            st.metric("Max drawdown (ERC)", f"{res['max_drawdown']:.2f}%")
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-label">Max drawdown (ERC)</div>
+                    <div class="metric-value">{res['max_drawdown']:.2f}%</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
         with m5:
-            st.metric("Transaction costs (ERC)", f"{res['total_tc']:.2f}%")
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-label">Transaction costs (ERC)</div>
+                    <div class="metric-value">{res['total_tc']:.2f}%</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
         st.markdown("### Method-level comparison: ERC vs Equal-Weight")
 
@@ -1173,18 +1245,54 @@ no single asset dominates the portfolio risk, which is particularly relevant for
 
         st.markdown("---")
 
+        # ======= SHORT INTERPRETATION AS BUBBLES =======
         st.markdown("### Short interpretation for a client")
-        st.markdown(
-            f"""
-- The **ERC portfolio** delivers an annualized excess return of **{res['expected_return']:.2f}%**,  
-  with an annualized volatility of **{res['volatility']:.2f}%** and a Sharpe ratio of **{res['sharpe']:.2f}**.  
-- The **Equal-Weight portfolio** on the same assets has an annualized excess return of **{res['ew_expected_return']:.2f}%**,  
-  volatility of **{res['ew_volatility']:.2f}%**, and a Sharpe ratio of **{res['ew_sharpe']:.2f}**.  
-- Maximum drawdowns and transaction costs are shown above, highlighting the trade-off between return, risk, and turnover.
 
-The key takeaway is **how ERC reshapes the risk allocation** compared to a simple EW rule.
-"""
-        )
+        col_i1, col_i2, col_i3 = st.columns(3)
+        with col_i1:
+            st.markdown(
+                f"""
+                <div class="three-step-card">
+                    <h4>ERC portfolio</h4>
+                    <p>
+                        Delivers an annualized excess return of
+                        <strong>{res['expected_return']:.2f}%</strong> for a volatility of
+                        <strong>{res['volatility']:.2f}%</strong>, resulting in a Sharpe ratio of
+                        <strong>{res['sharpe']:.2f}</strong>.
+                    </p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with col_i2:
+            st.markdown(
+                f"""
+                <div class="three-step-card">
+                    <h4>Equal-Weight benchmark</h4>
+                    <p>
+                        On the same asset universe, the Equal-Weight portfolio achieves
+                        <strong>{res['ew_expected_return']:.2f}%</strong> annualized excess return,
+                        with volatility of <strong>{res['ew_volatility']:.2f}%</strong> and a Sharpe ratio of
+                        <strong>{res['ew_sharpe']:.2f}</strong>.
+                    </p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with col_i3:
+            st.markdown(
+                """
+                <div class="three-step-card">
+                    <h4>Key takeaway</h4>
+                    <p>
+                        The ERC approach aims to <strong>equalize risk contributions</strong> across assets.
+                        For a client, this means a more <strong>balanced risk allocation</strong> than a naive
+                        Equal-Weight rule, potentially reducing concentration in a single risk bucket.
+                    </p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
         if st.button("Generate PDF report"):
             with st.spinner("Generating PDF report (using Kaleido and FPDF)..."):
@@ -1239,18 +1347,44 @@ We require at least **60 months of non-missing historical data** to obtain stati
                 final_95 = p95[-1]
                 final_05 = p05[-1]
 
-                m1, m2, m3 = st.columns(3)
-                m1.metric("Median ending value", f"${final_median:,.0f}")
-                m2.metric(
-                    "Bull case (95th percentile)",
-                    f"${final_95:,.0f}",
-                    delta=f"{((final_95 / initial_inv) - 1) * 100:.0f}%",
-                )
-                m3.metric(
-                    "Bear case (5th percentile)",
-                    f"${final_05:,.0f}",
-                    delta=f"{((final_05 / initial_inv) - 1) * 100:.0f}%",
-                )
+                # ======= LONG-TERM METRICS AS BUBBLES =======
+                lm1, lm2, lm3 = st.columns(3)
+                with lm1:
+                    st.markdown(
+                        f"""
+                        <div class="metric-card">
+                            <div class="metric-label">Median ending value</div>
+                            <div class="metric-value">${final_median:,.0f}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                with lm2:
+                    st.markdown(
+                        f"""
+                        <div class="metric-card">
+                            <div class="metric-label">Bull case (95th percentile)</div>
+                            <div class="metric-value">${final_95:,.0f}</div>
+                            <div class="metric-subtext">
+                                Total return: {((final_95 / initial_inv) - 1) * 100:.0f}%
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                with lm3:
+                    st.markdown(
+                        f"""
+                        <div class="metric-card">
+                            <div class="metric-label">Bear case (5th percentile)</div>
+                            <div class="metric-value">${final_05:,.0f}</div>
+                            <div class="metric-subtext">
+                                Total return: {((final_05 / initial_inv) - 1) * 100:.0f}%
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
                 st.plotly_chart(plot_monte_carlo(dates, median, p95, p05), use_container_width=True)
 
