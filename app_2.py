@@ -300,9 +300,22 @@ def compute_max_drawdown(cumulative_returns):
     return drawdowns.min() * 100
 
 @st.cache_data(show_spinner=True)
-def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=11):
+def perform_optimization(
+    selected_assets,
+    start_date_user,
+    end_date_user,
+    rebalance_freq,
+    _custom_data,
+    _rf_data,
+    _tx_cost_data,
+    lookback_months=36,
+    ann_factor=12,
+    _version=11
+):
     """
     Returns ERC metrics as main output + EW metrics for comparison.
+    Monte Carlo will use the full available history on the selected period
+    (not only the last 36 months window).  # <<< CHANGED: docstring clarifié
     """
     custom_data = _custom_data 
     rf_data = _rf_data
@@ -347,7 +360,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         total_tc_ew = 0.0
         weights_over_time_ew = {}
 
-        est_window_clean = pd.DataFrame()  # for hist_data / corr_matrix
+        est_window_clean = pd.DataFrame()  # last ERC window; still used for corr matrix
 
         for j, reb_idx in enumerate(rebalance_indices):
             rebal_date = period_dates[reb_idx]
@@ -492,6 +505,10 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         cum_port_excess_ew = (1 + port_excess_returns_ew).cumprod()
         max_drawdown_ew = compute_max_drawdown(cum_port_excess_ew)
 
+        # ---- Historical data for Monte Carlo (improved) ----
+        # On utilise toute l’historique de la période, en enlevant les lignes avec NaN.
+        hist_data_mc = full_returns.dropna(how="any")  # <<< CHANGED
+
         return {
             "selected_assets": selected_assets,
             # ERC (méthode principale)
@@ -508,7 +525,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             "rc_df": pd.DataFrame(rc_over_time, index=selected_assets).T.sort_index(),
             "corr_matrix": est_window_clean.corr() if 'est_window_clean' in locals() else pd.DataFrame(),
             "country_exposure_over_time": country_exposure_over_time,
-            "hist_data": est_window_clean if 'est_window_clean' in locals() else pd.DataFrame(),
+            "hist_data": hist_data_mc,  # <<< CHANGED: plus est_window_clean
             "cum_benchmark": cum_benchmark,
             # EW (benchmark de méthode)
             "ew_expected_return": ann_excess_ret_ew * 100,
@@ -529,10 +546,10 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
 def run_monte_carlo(hist_returns_df, weights, years=10, simulations=1000, initial_capital=100000):
     """
     State-of-the-Art Monte Carlo: Multivariate Historical Bootstrap.
-    Instead of assuming a normal distribution (GBM), we sample from REAL historical
-    vectors. This preserves:
-    1. Cross-Asset Correlations (Asset A vs Asset B)
-    2. Fat Tails (Real market crashes)
+    We sample from REAL historical portfolio returns (on the full available history),
+    preserving:
+    1. Cross-Asset Correlations
+    2. Fat Tails (crises, booms)
     """
     if hist_returns_df.empty:
         return [], [], [], [], []
@@ -540,7 +557,7 @@ def run_monte_carlo(hist_returns_df, weights, years=10, simulations=1000, initia
     # 1. Calculate Portfolio Historical Returns
     port_hist_returns = hist_returns_df.values @ weights
     
-    n_steps = int(years * 12) # Monthly steps
+    n_steps = int(years * 12)  # Monthly steps
     
     # 2. Bootstrap Engine (Sample from history with replacement)
     random_indices = np.random.choice(len(port_hist_returns), size=(simulations, n_steps))
@@ -560,8 +577,8 @@ def run_monte_carlo(hist_returns_df, weights, years=10, simulations=1000, initia
     # 4. Statistics
     dates = [datetime.now() + timedelta(days=30*i) for i in range(n_steps + 1)]
     median_path = np.median(price_paths, axis=0)
-    p95 = np.percentile(price_paths, 95, axis=0) # Bull case
-    p05 = np.percentile(price_paths, 5, axis=0)  # Bear case (Tail Risk)
+    p95 = np.percentile(price_paths, 95, axis=0)  # Bull case
+    p05 = np.percentile(price_paths, 5, axis=0)   # Bear case (Tail Risk)
     
     return dates, median_path, p95, p05, price_paths
 
@@ -956,7 +973,10 @@ The key takeaway is **how the ERC method reshapes the risk allocation** compared
 with tab3:
     
     st.markdown("## 4. Long-Term Projections (Monte Carlo)")
-    st.write("This simulation projects the future value of the **ERC portfolio** using a historical bootstrap.")
+    st.write(
+        "This simulation projects the future value of the **ERC portfolio** using a historical bootstrap "
+        "based on the full available history of the selected assets (minimum 60 months)."
+    )
 
     if "results" in st.session_state:
         res = st.session_state.results
@@ -966,13 +986,17 @@ with tab3:
         initial_inv = c1.number_input("Initial Investment ($)", value=100000, step=10000)
         sim_years = c2.slider("Projection Years", 5, 20, 10)
 
+        # <<< CHANGED: ce check est maintenant cohérent avec hist_data (full_returns)
         if res["hist_data"].shape[0] < 60:
-            st.error("Not enough historical data (need at least 60 months) to run a meaningful Monte Carlo.")
+            st.error(
+                "Not enough historical data (need at least 60 months of non-missing returns) "
+                "to run a statistically meaningful Monte Carlo simulation."
+            )
         else:
             with st.spinner("Running Historical Bootstrap Simulation..."):
                 dates, median, p95, p05, paths = run_monte_carlo(
                     hist_returns_df=res['hist_data'],
-                    weights=res['weights'],   # ERC weights
+                    weights=res['weights'],   # ERC weights (last rebalance)
                     years=sim_years,
                     initial_capital=initial_inv
                 )
@@ -1000,7 +1024,8 @@ with tab3:
 
 **Methodology: Historical Bootstrap**
 
-Instead of assuming Normal returns, we sample from **actual historical monthly returns** of the selected assets.  
+Instead of assuming Normal returns, we sample from **actual historical monthly returns** of the selected assets
+(over the full available history on your chosen period).  
 This preserves:
 1. **Fat tails:** real market crashes and booms.  
 2. **Correlation structure:** how assets move together, especially in stress periods.
