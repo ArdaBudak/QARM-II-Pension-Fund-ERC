@@ -1,3 +1,5 @@
+Voilà la version avec les couleurs hardcodées supprimées pour laisser le thème light de Streamlit faire le boulot (je n’ai gardé que le strict minimum pour la mise en page et le header).
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -18,18 +20,6 @@ from sklearn.covariance import LedoitWolf
 st.set_page_config(page_title="Pension Fund Optimizer", layout="wide")
 
 # =========================
-# THEME CONFIGURATION
-# =========================
-PRIMARY_COLOR = "#1F2937"   # Deep grey / blue accent
-PRIMARY_HOVER = "#111827"
-BUTTON_TEXT = "#FFFFFF"
-LIGHT_BG = "#F4F5F7"        # App background
-SIDEBAR_BG = "#ECEFF4"      # Sidebar background
-TEXT_COLOR = "#000000"
-CARD_BG = "#FFFFFF"
-TAB_UNDERLINE = PRIMARY_COLOR
-
-# =========================
 # IMAGE HELPERS
 # =========================
 def get_base64_of_bin_file(bin_file: str) -> str:
@@ -44,22 +34,12 @@ banner_base64 = get_base64_of_bin_file("Gray-Manhattan-Morning-Wallpaper-Mural.j
 logo_base64 = get_base64_of_bin_file("ERC Portfolio.png")
 
 # =========================
-# GLOBAL CSS STYLING
+# GLOBAL CSS STYLING (layout only, no theme overrides)
 # =========================
 st.markdown(
     f"""
     <style>
-    :root {{
-        --primary-color: {PRIMARY_COLOR};
-        --background-color: {LIGHT_BG};
-        --secondary-background-color: {SIDEBAR_BG};
-        --text-color: {TEXT_COLOR};
-        --font: 'Times New Roman', serif;
-    }}
-
     .stApp {{
-        background-color: {LIGHT_BG};
-        color: {TEXT_COLOR};
         font-family: 'Times New Roman', serif;
     }}
 
@@ -75,7 +55,6 @@ st.markdown(
         background-repeat: no-repeat !important;
         height: 8rem !important;
         z-index: 1001 !important;
-        background-color: #FFFFFF !important;
         border-bottom: 1px solid #D1D5DB;
     }}
 
@@ -111,55 +90,31 @@ st.markdown(
         overflow-y: auto;
     }}
 
-    /* =========================
-       STICKY TOP TAB BAR - UNDERLINE STYLE
-       ========================= */
+    /* STICKY TOP TAB BAR (no color override, only layout) */
     .stTabs [data-baseweb="tab-list"] {{
         position: -webkit-sticky !important;
         position: sticky !important;
         top: 0.35rem !important;
         z-index: 999 !important;
-
         display: flex !important;
         align-items: flex-end !important;
         gap: 2rem;
-
         width: 100%;
         margin: 0 0 0.8rem 0;
-
         padding-left: 0;
         padding-right: 0;
-
-        background-color: {LIGHT_BG};
-        /* thin line across full width */
-        background-image: linear-gradient(
-            to bottom,
-            transparent calc(100% - 1px),
-            #E5E7EB calc(100% - 1px)
-        );
+        border-bottom: 1px solid #E5E7EB;
+        background: transparent;
     }}
 
     .stTabs [data-baseweb="tab"] {{
-        background-color: transparent !important;
+        background: none !important;
         box-shadow: none !important;
         border-radius: 0 !important;
         border: none !important;
         margin: 0;
         padding: 0 0 10px 0 !important;
-
         border-bottom: 3px solid transparent;
-        transition:
-            border-color 0.25s ease-out,
-            color 0.25s ease-out,
-            transform 0.18s ease;
-    }}
-
-    .stTabs [data-baseweb="tab"] p {{
-        font-family: 'Times New Roman', serif !important;
-        font-weight: 500 !important;
-        font-size: 0.95rem !important;
-        margin: 0;
-        color: #6B7280;
     }}
 
     .stTabs [data-baseweb="tab"]:focus {{
@@ -167,147 +122,16 @@ st.markdown(
         box-shadow: none !important;
     }}
 
-    .stTabs [data-baseweb="tab"]:hover p {{
-        color: #374151;
-    }}
-
-    /* Active tab: darker text + thicker underline */
     .stTabs [data-baseweb="tab"][aria-selected="true"] {{
-        border-bottom: 3px solid {TAB_UNDERLINE};
+        border-bottom: 3px solid #1F2937;
     }}
 
-    .stTabs [data-baseweb="tab"][aria-selected="true"] p {{
-        color: {PRIMARY_HOVER};
-        font-weight: 600 !important;
-    }}
-
-    /* Sliding highlight bar under the active tab */
-    .stTabs [data-baseweb="tab-highlight"] {{
-        background-color: {TAB_UNDERLINE} !important;
-        border-radius: 999px !important;
-        height: 3px !important;
-        bottom: 0 !important;
-        margin-bottom: 0 !important;
-        transition: all 0.25s ease-in-out !important;
-    }}
-
-    .stSidebar {{
-        background-color: {SIDEBAR_BG};
-    }}
-
-    section[data-testid="stSidebar"] {{
-        background-color: {SIDEBAR_BG};
-        color: {TEXT_COLOR};
-    }}
-
-    /* PRIMARY BUTTONS */
-    .stButton>button {{
-        background-color: {PRIMARY_COLOR};
-        border-radius: 999px;
-        padding: 0.55rem 1.5rem;
-        font-family: 'Times New Roman', serif;
-        border: none;
-        font-weight: 600;
-        transition: all 0.2s ease;
-        font-size: 0.96rem;
-    }}
-
-    .stButton>button,
-    .stButton>button * {{
-        color: {BUTTON_TEXT} !important;
-    }}
-
-    .stButton>button:hover {{
-        background-color: {PRIMARY_HOVER};
-        transform: translateY(-1px);
-        box-shadow: 0 8px 18px rgba(0,0,0,0.12);
-    }}
-
-    /* INPUTS & SELECTORS */
-
-    .stDateInput > div[data-baseweb="input"] {{
-        background-color: {PRIMARY_COLOR} !important;
-        color: {BUTTON_TEXT} !important;
-        border-radius: 10px !important;
-        border: 1px solid #4B5563 !important;
-    }}
-
-    .stDateInput input {{
-        background-color: transparent !important;
-        color: {BUTTON_TEXT} !important;
-        border-radius: 10px !important;
-        border: none !important;
-    }}
-
-    .stSelectbox > div[data-baseweb="select"],
-    .stMultiSelect > div[data-baseweb="select"] {{
-        background-color: #111827 !important;
-        color: #F9FAFB !important;
-        border-radius: 10px !important;
-        border: 1px solid #4B5563 !important;
-        min-height: 40px;
-    }}
-
-    .stSelectbox div[data-baseweb="select"] span,
-    .stMultiSelect div[data-baseweb="select"] span {{
-        color: #F9FAFB !important;
-    }}
-
-    div[role="listbox"] {{
-        background-color: #111827 !important;
-        color: #F9FAFB !important;
-        border-radius: 10px !important;
-        border: 1px solid #4B5563 !important;
-    }}
-
-    div[role="option"] {{
-        color: #F9FAFB !important;
-    }}
-
-    div[role="option"][aria-selected="true"] {{
-        background-color: #4B5563 !important;
-    }}
-
-    span[data-baseweb="tag"] {{
-        background-color: #4B5563 !important;
-        color: #F9FAFB !important;
-        border: 1px solid #6B7280;
-    }}
-
-    /* TYPOGRAPHY */
-    h1, h2, h3, h4, h5, h6, .stHeader, p, label {{
-        color: {TEXT_COLOR} !important;
-        font-family: 'Times New Roman', serif;
-    }}
-
-    h1 {{
-        font-size: 2.1rem !important;
-        letter-spacing: 0.03em;
-        margin-bottom: 0.6rem;
-    }}
-
-    h2 {{
-        font-size: 1.6rem !important;
-        letter-spacing: 0.02em;
-        margin-top: 1.4rem;
-    }}
-
-    h3 {{
-        font-size: 1.25rem !important;
-        letter-spacing: 0.01em;
-    }}
-
-    p, li {{
-        line-height: 1.6;
-        font-size: 0.97rem;
-    }}
-
-    /* GENERAL CARD STYLE */
+    /* GENERAL CARD STYLE (light cards) */
     .content-card {{
         max-width: 1000px;
         margin: 1.5rem auto 1.8rem auto;
         padding: 2.0rem 2.4rem;
-        background-color: {CARD_BG};
+        background-color: #FFFFFF;
         border-radius: 18px;
         box-shadow: 0 14px 35px rgba(0,0,0,0.06);
         border: 1px solid #E5E7EB;
@@ -317,26 +141,10 @@ st.markdown(
         max-width: 900px;
         margin: 1.5rem auto 1.8rem auto;
         padding: 1.8rem 2.2rem;
-        background-color: {CARD_BG};
+        background-color: #FFFFFF;
         border-radius: 18px;
         box-shadow: 0 10px 28px rgba(0,0,0,0.05);
         border: 1px solid #E5E7EB;
-    }}
-
-    /* METRIC LOOK (container) */
-    div[data-testid="stMetric"] {{
-        padding: 0.9rem 1.1rem;
-        border-radius: 14px;
-        background-color: #F9FAFB;
-        border: 1px solid #E5E7EB;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.04);
-    }}
-
-    /* FORCE METRIC TEXT TO DARK */
-    [data-testid="stMetricLabel"],
-    [data-testid="stMetricValue"],
-    [data-testid="stMetricDelta"] {{
-        color: #111827 !important;
     }}
 
     .three-step-card {{
@@ -377,13 +185,11 @@ st.markdown(
         font-weight: 600;
         font-size: 0.96rem;
         margin-bottom: 0.6rem;
-        color: #4B5563 !important;
     }}
 
     .team-desc {{
         font-size: 0.92rem;
         line-height: 1.5;
-        color: #111827 !important;
     }}
 
     .team-row {{
@@ -446,7 +252,7 @@ def load_data_bundle():
 
         etf_ret = etf[["date", "ETF", "return_monthly"]].copy()
         etf_ret["date"] = pd.to_datetime(etf_ret["date"])
-        etf_ret = etf_ret.rename(columns={"ETF": "asset", "return_monthly": "ret"})
+        etf_ret = ett_ret = etf_ret.rename(columns={"ETF": "asset", "return_monthly": "ret"})
 
         returns_long = pd.concat([comp_ret, etf_ret], ignore_index=True)
         returns_wide = (
@@ -545,7 +351,7 @@ def compute_rebalance_indices(dates, freq_label):
     step = freq_map.get(freq_label, 12)
     n = len(dates)
     idxs = list(range(0, n, step))
-    if idxs[-1] != n - 1:
+    if idxs and idxs[-1] != n - 1:
         idxs.append(n - 1)
     return idxs
 
