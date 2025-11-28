@@ -239,56 +239,7 @@ st.markdown(
         box-shadow: 0 8px 22px rgba(0,0,0,0.06);
         border: 1px solid #E5E7EB;
     }}
-        /* TEAM GRID */
-    .team-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1.5rem;
-        justify-content: space-between;
-        align-items: stretch;
-        margin-top: 0.5rem;
-    }
 
-    .team-card {
-        flex: 1 1 180px;
-        max-width: 200px;
-        background-color: #FFFFFF;
-        border-radius: 16px;
-        padding: 1.1rem 1rem 1.4rem 1rem;
-        box-shadow: 0 10px 24px rgba(0,0,0,0.06);
-        border: 1px solid #E5E7EB;
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .team-photo {
-        width: 140px;
-        height: 140px;
-        border-radius: 16px;
-        object-fit: cover;
-        box-shadow: 0 8px 18px rgba(0,0,0,0.08);
-    }
-
-    .team-name {
-        margin-top: 0.75rem;
-        font-weight: 700;
-        font-size: 1rem;
-    }
-
-    .team-role {
-        margin-top: 0.15rem;
-        font-weight: 600;
-        font-size: 0.9rem;
-        color: #4B5563;
-    }
-
-    .team-desc {
-        margin-top: 0.55rem;
-        font-size: 0.88rem;
-        line-height: 1.5;
-    }
     /* PRINT MODE */
     @media print {{
         section[data-testid="stSidebar"], 
@@ -1446,7 +1397,9 @@ with tab4:
         """
         <div class="content-card-narrow">
             <h3>👥 Our Team</h3>
-            <p>Meet the team behind the Pension Fund Optimizer.</p>
+            <p>
+            Meet the team behind the Pension Fund Optimizer.
+            </p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1485,17 +1438,10 @@ with tab4:
         },
     ]
 
-    # Build HTML grid so all cards are perfectly aligned
-    team_html = '<div class="team-grid">'
-    for member in team:
-        team_html += f"""
-        <div class="team-card">
-            <img src="{member['photo']}" class="team-photo" />
-            <div class="team-name">{member['name']}</div>
-            <div class="team-role">{member['role']}</div>
-            <div class="team-desc">{member['desc']}</div>
-        </div>
-        """
-    team_html += "</div>"
-
-    st.markdown(team_html, unsafe_allow_html=True)
+    cols = st.columns(len(team))
+    for i, member in enumerate(team):
+        with cols[i]:
+            st.image(member["photo"], width=150)
+            st.markdown(f"#### {member['name']}")
+            st.markdown(f"**{member['role']}**")
+            st.write(member["desc"])
