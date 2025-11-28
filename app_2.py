@@ -177,7 +177,7 @@ st.markdown(
     }}
 
     .stTabs [data-baseweb="tab"][aria-selected="true"] p {{
-        color: {PRIMARY_HOVER};
+        color: "{PRIMARY_HOVER}";
         font-weight: 600 !important;
     }}
 
@@ -224,95 +224,57 @@ st.markdown(
         box-shadow: 0 8px 18px rgba(0,0,0,0.12);
     }}
 
-    /* =========================
-       INPUTS & SELECTORS
-       ========================= */
+    /* INPUTS & SELECTORS: make choices readable (white background, dark text) */
 
-    /* Date inputs: wrapper bubble in dark color */
-    .stDateInput > div[data-baseweb="input"] {{
-        background-color: {PRIMARY_COLOR} !important;
-        color: {BUTTON_TEXT} !important;
-        border-radius: 10px !important;
-        border: 1px solid #4B5563 !important;
-    }}
-
-    /* Actual text field inside */
+    /* Date inputs */
     .stDateInput input {{
-        background-color: transparent !important;
-        color: {BUTTON_TEXT} !important;
+        background-color: #FFFFFF !important;
+        color: #111827 !important;
         border-radius: 10px !important;
-        border: none !important;
+        border: 1px solid #D1D5DB !important;
     }}
 
     /* Selectbox & Multiselect containers */
     .stSelectbox > div[data-baseweb="select"],
     .stMultiSelect > div[data-baseweb="select"] {{
-        background-color: #111827 !important;
-        color: #F9FAFB !important;
+        background-color: #FFFFFF !important;
+        color: #111827 !important;
         border-radius: 10px !important;
-        border: 1px solid #4B5563 !important;
+        border: 1px solid #D1D5DB !important;
         min-height: 40px;
     }}
 
     /* Selected text / placeholder inside selects */
     .stSelectbox div[data-baseweb="select"] span,
     .stMultiSelect div[data-baseweb="select"] span {{
-        color: #F9FAFB !important;
+        color: #111827 !important;
     }}
 
     /* Dropdown menu for options */
     div[role="listbox"] {{
-        background-color: #111827 !important;
-        color: #F9FAFB !important;
+        background-color: #FFFFFF !important;
+        color: #111827 !important;
         border-radius: 10px !important;
-        border: 1px solid #4B5563 !important;
+        border: 1px solid #D1D5DB !important;
     }}
 
     /* Individual options */
     div[role="option"] {{
-        color: #F9FAFB !important;
+        color: #111827 !important;
     }}
 
     div[role="option"][aria-selected="true"] {{
-        background-color: #4B5563 !important;
+        background-color: #E5E7EB !important;
     }}
 
     /* TAGS */
     span[data-baseweb="tag"] {{
-        background-color: #4B5563 !important;
-        color: #F9FAFB !important;
-        border: 1px solid #6B7280;
+        background-color: #E5E7EB !important;
+        color: {TEXT_COLOR} !important;
+        border: 1px solid #D1D5DB;
     }}
 
-    /* =========================
-       METRICS (ERC Portfolio Results)
-       ========================= */
-    div[data-testid="stMetric"] {{
-        padding: 0.9rem 1.1rem;
-        border-radius: 14px;
-        background-color: #F9FAFB;
-        border: 1px solid #E5E7EB;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.04);
-    }}
-    div[data-testid="stMetricLabel"],
-    div[data-testid="stMetricValue"],
-    div[data-testid="stMetricDelta"] {{
-        color: #111827 !important;  /* force dark text for all metric content */
-    }}
-
-    /* =========================
-       FORCE PLOTLY LEGENDS & AXES IN DARK TEXT
-       ========================= */
-    .js-plotly-plot .legend text,
-    .js-plotly-plot .g-xtitle text,
-    .js-plotly-plot .g-ytitle text,
-    .js-plotly-plot .xtick text,
-    .js-plotly-plot .ytick text {{
-        fill: #111827 !important;
-        color: #111827 !important;
-    }}
-
-    /* TYPOGRAPHY */
+    /* TYPOGRAPHY: avoid overriding all spans/divs to keep widgets readable */
     h1, h2, h3, h4, h5, h6, .stHeader, p, label {{
         color: {TEXT_COLOR} !important;
         font-family: 'Times New Roman', serif;
@@ -359,6 +321,15 @@ st.markdown(
         border-radius: 18px;
         box-shadow: 0 10px 28px rgba(0,0,0,0.05);
         border: 1px solid #E5E7EB;
+    }}
+
+    /* METRIC LOOK (no wrapper needed) */
+    div[data-testid="stMetric"] {{
+        padding: 0.9rem 1.1rem;
+        border-radius: 14px;
+        background-color: #F9FAFB;
+        border: 1px solid #E5E7EB;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.04);
     }}
 
     /* COLUMNS CARD LOOK (for the 3 steps) */
@@ -1175,6 +1146,7 @@ tab0, tab1, tab2, tab3, tab4 = st.tabs(
 
 # ---------- TAB 0: INTRO ----------
 with tab0:
+    # Intro card (pure HTML)
     st.markdown(
         """
         <div class="content-card">
@@ -1189,6 +1161,7 @@ with tab0:
         unsafe_allow_html=True,
     )
 
+    # Title outside of any card
     st.markdown("### 1. How to use the app in 3 steps")
 
     col_step1, col_step2, col_step3 = st.columns(3)
@@ -1295,7 +1268,7 @@ with tab1:
             "End date",
             value=max_date,
             min_value=min_date,
-            max_value=max_value,
+            max_value=max_date,
         )
 
         if start_date < end_date:
@@ -1349,6 +1322,7 @@ with tab2:
     if "results" in st.session_state:
         res = st.session_state.results
 
+        # Top metrics in "card-like" metrics (styled via CSS)
         m1, m2, m3, m4, m5 = st.columns(5)
         with m1:
             st.metric("Excess return (ERC)", f"{res['expected_return']:.2f}%")
@@ -1526,6 +1500,7 @@ of the selected asset universe (over the full available history in the chosen pe
 
 # ---------- TAB 4: ABOUT ----------
 with tab4:
+    # First card: About the app only
     st.markdown(
         """
         <div class="content-card">
@@ -1553,6 +1528,7 @@ with tab4:
         unsafe_allow_html=True,
     )
 
+    # Second card: separate "Our Team" section
     st.markdown(
         """
         <div class="content-card-narrow">
