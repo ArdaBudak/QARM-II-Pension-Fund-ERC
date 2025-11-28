@@ -224,7 +224,9 @@ st.markdown(
         box-shadow: 0 8px 18px rgba(0,0,0,0.12);
     }}
 
-    /* INPUTS & SELECTORS */
+    /* =========================
+       INPUTS & SELECTORS
+       ========================= */
 
     /* Date inputs: wrapper bubble in dark color */
     .stDateInput > div[data-baseweb="input"] {{
@@ -282,6 +284,34 @@ st.markdown(
         border: 1px solid #6B7280;
     }}
 
+    /* =========================
+       METRICS (ERC Portfolio Results)
+       ========================= */
+    div[data-testid="stMetric"] {{
+        padding: 0.9rem 1.1rem;
+        border-radius: 14px;
+        background-color: #F9FAFB;
+        border: 1px solid #E5E7EB;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+    }}
+    div[data-testid="stMetricLabel"],
+    div[data-testid="stMetricValue"],
+    div[data-testid="stMetricDelta"] {{
+        color: #111827 !important;  /* force dark text for all metric content */
+    }}
+
+    /* =========================
+       FORCE PLOTLY LEGENDS & AXES IN DARK TEXT
+       ========================= */
+    .js-plotly-plot .legend text,
+    .js-plotly-plot .g-xtitle text,
+    .js-plotly-plot .g-ytitle text,
+    .js-plotly-plot .xtick text,
+    .js-plotly-plot .ytick text {{
+        fill: #111827 !important;
+        color: #111827 !important;
+    }}
+
     /* TYPOGRAPHY */
     h1, h2, h3, h4, h5, h6, .stHeader, p, label {{
         color: {TEXT_COLOR} !important;
@@ -329,21 +359,6 @@ st.markdown(
         border-radius: 18px;
         box-shadow: 0 10px 28px rgba(0,0,0,0.05);
         border: 1px solid #E5E7EB;
-    }}
-
-    /* METRIC LOOK (no wrapper needed) */
-    div[data-testid="stMetric"] {{
-        padding: 0.9rem 1.1rem;
-        border-radius: 14px;
-        background-color: #F9FAFB;
-        border: 1px solid #E5E7EB;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.04);
-    }}
-
-    /* >>> CHANGEMENT: forcer le texte des st.metric (valeurs + légendes) en foncé <<< */
-    div[data-testid="stMetric"],
-    div[data-testid="stMetric"] * {{
-        color: #111827 !important;
     }}
 
     /* COLUMNS CARD LOOK (for the 3 steps) */
@@ -400,13 +415,6 @@ st.markdown(
         gap: 1.25rem;
         justify-content: space-between;
         flex-wrap: wrap;
-    }}
-
-    /* >>> CHANGEMENT: Forcer le texte des légendes / labels Plotly en foncé <<< */
-    .js-plotly-plot .legend text,
-    .js-plotly-plot text {{
-        fill: #111827 !important;
-        color: #111827 !important;
     }}
 
     /* PRINT MODE */
@@ -932,28 +940,10 @@ def plot_monte_carlo(dates, median, p95, p05):
         title="Long-Term Monte Carlo Projection (Historical Bootstrap)",
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="#111827", family="Times New Roman"),
+        font=dict(color="black", family="Times New Roman"),
         yaxis_title="Portfolio Value ($)",
         height=600,
         template="plotly_white",
-        legend=dict(
-            bgcolor="rgba(255,255,255,0.9)",
-            bordercolor="#E5E7EB",
-            borderwidth=1,
-            font=dict(color="#111827")
-        ),
-        xaxis=dict(
-            showgrid=True,
-            gridcolor="rgba(156,163,175,0.35)",
-            tickfont=dict(color="#111827"),
-            titlefont=dict(color="#111827")
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor="rgba(156,163,175,0.35)",
-            tickfont=dict(color="#111827"),
-            titlefont=dict(color="#111827")
-        ),
     )
     return fig
 
@@ -987,7 +977,7 @@ def plot_cumulative_performance(results):
                 y=cum_ew.values,
                 mode="lines",
                 name="Equal-Weight (same assets)",
-                line=dict(color="#374151", width=2, dash="dot"),
+                line=dict(color="#9CA3AF", width=2, dash="dot"),
             )
         )
 
@@ -1037,30 +1027,11 @@ def plot_cumulative_performance(results):
         title="Cumulative Excess Return (ERC vs EW vs S&P 500, log scale)",
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="#111827", family="Times New Roman"),
+        font=dict(color="black", family="Times New Roman"),
         yaxis_title="Growth of $1 (log)",
-        yaxis=dict(
-            type="log",
-            dtick=nice_dtick,
-            tickformat=".2f",
-            minor=dict(showgrid=False),
-            tickfont=dict(color="#111827"),
-            titlefont=dict(color="#111827"),
-        ),
-        xaxis=dict(
-            showgrid=True,
-            gridcolor="rgba(156,163,175,0.35)",
-            tickfont=dict(color="#111827"),
-            titlefont=dict(color="#111827"),
-        ),
+        yaxis=dict(type="log", dtick=nice_dtick, tickformat=".2f", minor=dict(showgrid=False)),
         height=650,
         template="plotly_white",
-        legend=dict(
-            bgcolor="rgba(255,255,255,0.9)",
-            bordercolor="#E5E7EB",
-            borderwidth=1,
-            font=dict(color="#111827")
-        ),
     )
     return fig
 
@@ -1071,28 +1042,10 @@ def plot_weights_over_time(results):
     fig.update_layout(
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="#111827", family="Times New Roman"),
+        font=dict(color="black", family="Times New Roman"),
         title="ERC Weights Over Time (stacked)",
         height=500,
         template="plotly_white",
-        legend=dict(
-            bgcolor="rgba(255,255,255,0.9)",
-            bordercolor="#E5E7EB",
-            borderwidth=1,
-            font=dict(color="#111827")
-        ),
-        xaxis=dict(
-            showgrid=True,
-            gridcolor="rgba(156,163,175,0.35)",
-            tickfont=dict(color="#111827"),
-            titlefont=dict(color="#111827"),
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor="rgba(156,163,175,0.35)",
-            tickfont=dict(color="#111827"),
-            titlefont=dict(color="#111827"),
-        ),
     )
     return fig
 
@@ -1106,28 +1059,10 @@ def plot_risk_evolution(results):
         title="Risk Contribution Evolution (target: equal risk)",
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="#111827", family="Times New Roman"),
+        font=dict(color="black", family="Times New Roman"),
         yaxis_title="Risk Contribution (%)",
         height=500,
         template="plotly_white",
-        legend=dict(
-            bgcolor="rgba(255,255,255,0.9)",
-            bordercolor="#E5E7EB",
-            borderwidth=1,
-            font=dict(color="#111827")
-        ),
-        xaxis=dict(
-            showgrid=True,
-            gridcolor="rgba(156,163,175,0.35)",
-            tickfont=dict(color="#111827"),
-            titlefont=dict(color="#111827"),
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor="rgba(156,163,175,0.35)",
-            tickfont=dict(color="#111827"),
-            titlefont=dict(color="#111827"),
-        ),
     )
     return fig
 
@@ -1148,28 +1083,10 @@ def plot_country_exposure_over_time(results):
     fig.update_layout(
         paper_bgcolor="white",
         plot_bgcolor="white",
-        font=dict(color="#111827", family="Times New Roman"),
+        font=dict(color="black", family="Times New Roman"),
         yaxis_title="Exposure (%)",
         height=500,
         template="plotly_white",
-        legend=dict(
-            bgcolor="rgba(255,255,255,0.9)",
-            bordercolor="#E5E7EB",
-            borderwidth=1,
-            font=dict(color="#111827")
-        ),
-        xaxis=dict(
-            showgrid=True,
-            gridcolor="rgba(156,163,175,0.35)",
-            tickfont=dict(color="#111827"),
-            titlefont=dict(color="#111827"),
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor="rgba(156,163,175,0.35)",
-            tickfont=dict(color="#111827"),
-            titlefont=dict(color="#111827"),
-        ),
     )
     return fig
 
@@ -1258,7 +1175,6 @@ tab0, tab1, tab2, tab3, tab4 = st.tabs(
 
 # ---------- TAB 0: INTRO ----------
 with tab0:
-    # Intro card (pure HTML)
     st.markdown(
         """
         <div class="content-card">
@@ -1273,7 +1189,6 @@ with tab0:
         unsafe_allow_html=True,
     )
 
-    # Title outside of any card
     st.markdown("### 1. How to use the app in 3 steps")
 
     col_step1, col_step2, col_step3 = st.columns(3)
@@ -1380,7 +1295,7 @@ with tab1:
             "End date",
             value=max_date,
             min_value=min_date,
-            max_value=max_date,
+            max_value=max_value,
         )
 
         if start_date < end_date:
@@ -1434,7 +1349,6 @@ with tab2:
     if "results" in st.session_state:
         res = st.session_state.results
 
-        # Top metrics in "card-like" metrics (styled via CSS)
         m1, m2, m3, m4, m5 = st.columns(5)
         with m1:
             st.metric("Excess return (ERC)", f"{res['expected_return']:.2f}%")
@@ -1612,7 +1526,6 @@ of the selected asset universe (over the full available history in the chosen pe
 
 # ---------- TAB 4: ABOUT ----------
 with tab4:
-    # First card: About the app only
     st.markdown(
         """
         <div class="content-card">
@@ -1640,7 +1553,6 @@ with tab4:
         unsafe_allow_html=True,
     )
 
-    # Second card: separate "Our Team" section
     st.markdown(
         """
         <div class="content-card-narrow">
