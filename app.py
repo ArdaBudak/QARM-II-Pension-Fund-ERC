@@ -23,6 +23,7 @@ LIGHT_BG = "#FFFFFF"        # Main Background
 SIDEBAR_BG = "#F5F5F5"      # Light Grey Sidebar
 TEXT_COLOR = "#000000"      # Black Text
 TAB_UNDERLINE = "#999999"   # Dark Grey for Tabs
+INFO_BOX_BG = "#F0F0F0"     # Grey for the info box
 
 # --- IMAGE HELPERS ---
 def get_base64_of_bin_file(bin_file):
@@ -84,12 +85,13 @@ st.markdown(
         background-position: center;
         z-index: 1002;
         pointer-events: none;
+        border-radius: 60px; 
     }}
     
     header .decoration {{ display: none; }}
     
     .block-container {{
-        padding-top: 9rem !important; 
+        padding-top: 8rem !important; 
         padding-bottom: 1rem !important;
     }}
     
@@ -104,7 +106,7 @@ st.markdown(
         top: 0 !important;
         z-index: 999 !important;
         background-color: {LIGHT_BG} !important;
-        padding-top: 1rem;
+        padding-top: 0.1rem;
         padding-bottom: 0.5rem;
         border-bottom: 1px solid #E0E0E0;
         box-shadow: 0 4px 4px -2px rgba(0,0,0,0.05);
@@ -136,6 +138,23 @@ st.markdown(
         border-color: #999999;
     }}
 
+    /* --- FINAL FIXED SLIDER STYLING --- */
+    div[data-baseweb="slider"] div[role="slider"] {{
+        background-color: #999999 !important;
+        box-shadow: none !important;
+        border: 1px solid #999999 !important;
+    }}
+    
+    div[data-baseweb="slider"] div[style*="background-color: rgb(255, 75, 75)"], 
+    div[data-baseweb="slider"] div[style*="background-color: #ff4b4b"],
+    div[data-baseweb="slider"] div[style*="background-color: rgb(255, 75, 75)"] {{
+        background-color: #CCCCCC !important;
+    }}
+
+    .stSlider div[data-testid="stMarkdownContainer"] p {{
+        color: {TEXT_COLOR} !important;
+    }}
+
     span[data-baseweb="tag"] {{
         background-color: #E8E8E8 !important;
         color: {TEXT_COLOR} !important;
@@ -147,6 +166,58 @@ st.markdown(
         font-family: 'Times New Roman', serif; 
     }}
     
+    /* Custom Info Box Styling */
+    .custom-info-box {{
+        background-color: {INFO_BOX_BG};
+        border-left: 5px solid #999999;
+        padding: 15px;
+        border-radius: 5px;
+        color: black;
+        font-family: 'Times New Roman', serif;
+        margin-top: 10px;
+    }}
+    
+    /* UNIFIED CARD STYLING FOR BUBBLES */
+    /* This ensures all cards in a row have equal height */
+    div[data-testid="column"] {{
+        display: flex;
+        flex-direction: column; 
+    }}
+    
+    .metric-card-box {{
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 1.2rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        border: 1px solid #E5E7EB;
+        text-align: left;
+        height: 100%; /* Forces equal height */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }}
+    
+    .metric-card-label {{
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #666666;
+        margin-bottom: 0.3rem;
+    }}
+    
+    .metric-card-value {{
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #000000;
+        margin-bottom: 0.2rem;
+    }}
+    
+    .metric-card-desc {{
+        font-size: 0.9rem;
+        color: #333333;
+        line-height: 1.4;
+    }}
+
     @media print {{
         section[data-testid="stSidebar"], 
         .stButton, 
@@ -300,7 +371,7 @@ def compute_max_drawdown(cumulative_returns):
     return drawdowns.min() * 100
 
 @st.cache_data(show_spinner=True)
-def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=10):
+def perform_optimization(selected_assets, start_date_user, end_date_user, rebalance_freq, _custom_data, _rf_data, _tx_cost_data, lookback_months=36, ann_factor=12, _version=11):
     custom_data = _custom_data 
     rf_data = _rf_data
     tx_cost_data = _tx_cost_data
@@ -326,13 +397,22 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
         rebalance_indices = compute_rebalance_indices(period_dates, rebalance_freq)
         
         n = len(selected_assets)
-        previous_weights = np.zeros(n)
-        port_returns = pd.Series(index=period_dates, dtype=float).fillna(0.0)
-        weights_over_time = {}
+        
+        # ERC Vars
+        previous_weights_erc = np.zeros(n)
+        port_returns_erc = pd.Series(index=period_dates, dtype=float).fillna(0.0)
+        weights_over_time_erc = {}
         rc_over_time = {} 
         country_exposure_over_time = {}
-        total_tc = 0.0
+        total_tc_erc = 0.0
         rc_pct = np.zeros(n) 
+
+        # EW Vars
+        ew_weights_const = np.ones(n) / n
+        previous_weights_ew = np.zeros(n)
+        port_returns_ew = pd.Series(index=period_dates, dtype=float).fillna(0.0)
+        total_tc_ew = 0.0
+        weights_over_time_ew = {}
 
         for j, reb_idx in enumerate(rebalance_indices):
             rebal_date = period_dates[reb_idx]
@@ -343,7 +423,8 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
             est_window_clean = est_window.dropna(axis=1, how='any')
             valid_assets = est_window_clean.columns.tolist()
             
-            current_weights = np.zeros(n)
+            # --- ERC CALCULATION ---
+            current_weights_erc = np.zeros(n)
             current_rc = np.zeros(n)
             
             if len(valid_assets) > 0:
@@ -365,7 +446,7 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                     
                     for asset_name, w_val, rc_val in zip(valid_assets, w_active, rc_active):
                         idx = selected_assets.index(asset_name)
-                        current_weights[idx] = w_val
+                        current_weights_erc[idx] = w_val
                         current_rc[idx] = rc_val
                 except:
                     # Inverse Volatility Fallback
@@ -375,14 +456,15 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                         w_active = inv_vols / inv_vols.sum()
                         for asset_name, w_val in zip(valid_assets, w_active.values):
                             idx = selected_assets.index(asset_name)
-                            current_weights[idx] = w_val
+                            current_weights_erc[idx] = w_val
                             current_rc[idx] = 100.0 / len(valid_assets)
                     except:
-                         if np.sum(previous_weights) > 0.9: current_weights = previous_weights
+                         if np.sum(previous_weights_erc) > 0.9: current_weights_erc = previous_weights_erc
 
             rc_over_time[rebal_date] = current_rc
             rc_pct = current_rc
 
+            # Transaction Costs
             if not tx_cost_data.empty:
                 try:
                     if not tx_cost_data.index.is_monotonic_increasing: tx_cost_data = tx_cost_data.sort_index()
@@ -391,15 +473,25 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                 except: current_tx_rate = 0.0010
             else: current_tx_rate = 0.0010 
 
-            traded_volume = np.sum(np.abs(current_weights - previous_weights))
-            cost = traded_volume * current_tx_rate
-            total_tc += cost
+            # Apply TC to ERC
+            traded_volume_erc = np.sum(np.abs(current_weights_erc - previous_weights_erc))
+            cost_erc = traded_volume_erc * current_tx_rate
+            total_tc_erc += cost_erc
             
-            previous_weights = current_weights.copy()
-            weights_over_time[rebal_date] = current_weights
+            previous_weights_erc = current_weights_erc.copy()
+            weights_over_time_erc[rebal_date] = current_weights_erc
             
+            # --- EW CALCULATION ---
+            current_weights_ew = ew_weights_const.copy()
+            traded_volume_ew = np.sum(np.abs(current_weights_ew - previous_weights_ew))
+            cost_ew = traded_volume_ew * current_tx_rate
+            total_tc_ew += cost_ew
+            previous_weights_ew = current_weights_ew.copy()
+            weights_over_time_ew[rebal_date] = current_weights_ew
+
+            # Country Exposures
             country_exp = {}
-            for asset, w in zip(selected_assets, current_weights):
+            for asset, w in zip(selected_assets, current_weights_erc):
                 c = country_map.get(asset, "Unknown")
                 country_exp[c] = country_exp.get(c, 0) + w
             country_exposure_over_time[rebal_date] = country_exp
@@ -409,50 +501,91 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
                 
             sub_ret = period_returns.iloc[reb_idx:end_slice].fillna(0.0)
             if not sub_ret.empty:
-                period_port_ret = sub_ret.values @ current_weights
-                if len(period_port_ret) > 0: period_port_ret[0] -= cost 
-                port_returns.iloc[reb_idx:end_slice] = period_port_ret
+                # ERC Returns
+                period_erc_ret = sub_ret.values @ current_weights_erc
+                if len(period_erc_ret) > 0: period_erc_ret[0] -= cost_erc 
+                port_returns_erc.iloc[reb_idx:end_slice] = period_erc_ret
+                
+                # EW Returns
+                period_ew_ret = sub_ret.values @ current_weights_ew
+                if len(period_ew_ret) > 0: period_ew_ret[0] -= cost_ew
+                port_returns_ew.iloc[reb_idx:end_slice] = period_ew_ret
 
+        # Excess Returns
         if not rf_data.empty:
-            aligned_rf = rf_data.reindex(port_returns.index, method='ffill').fillna(0.0)
-            port_excess_returns = port_returns - aligned_rf
+            aligned_rf = rf_data.reindex(port_returns_erc.index, method='ffill').fillna(0.0)
+            port_excess_returns_erc = port_returns_erc - aligned_rf
+            port_excess_returns_ew = port_returns_ew - aligned_rf
         else:
-            port_excess_returns = port_returns
+            port_excess_returns_erc = port_returns_erc
+            port_excess_returns_ew = port_returns_ew
             
+        # BENCHMARK Calculation
         benchmark_asset = "SPDR S&P 500 ETF"
         cum_benchmark = pd.Series(dtype=float) 
+        bench_excess = pd.Series(dtype=float)
+
         if benchmark_asset in custom_data.columns:
-             bench_ret = custom_data[benchmark_asset].reindex(port_returns.index).fillna(0.0)
+             bench_ret = custom_data[benchmark_asset].reindex(port_returns_erc.index).fillna(0.0)
              if not rf_data.empty:
-                 aligned_rf_bench = rf_data.reindex(port_returns.index, method='ffill').fillna(0.0)
+                 aligned_rf_bench = rf_data.reindex(port_returns_erc.index, method='ffill').fillna(0.0)
                  bench_excess = bench_ret - aligned_rf_bench
              else: bench_excess = bench_ret
              cum_benchmark = (1 + bench_excess).cumprod()
 
-        ann_vol = port_returns.std() * np.sqrt(ann_factor)
-        ann_excess_ret = port_excess_returns.mean() * ann_factor
-        sharpe = ann_excess_ret / ann_vol if ann_vol > 0 else 0.0
-        cum_port_excess = (1 + port_excess_returns).cumprod()
-        max_drawdown = compute_max_drawdown(cum_port_excess)
+        # Metrics ERC
+        ann_vol_erc = port_returns_erc.std() * np.sqrt(ann_factor)
+        ann_excess_ret_erc = port_excess_returns_erc.mean() * ann_factor
+        sharpe_erc = ann_excess_ret_erc / ann_vol_erc if ann_vol_erc > 0 else 0.0
+        cum_port_excess_erc = (1 + port_excess_returns_erc).cumprod()
+        max_drawdown_erc = compute_max_drawdown(cum_port_excess_erc)
+
+        # Metrics EW
+        ann_vol_ew = port_returns_ew.std() * np.sqrt(ann_factor)
+        ann_excess_ret_ew = port_excess_returns_ew.mean() * ann_factor
+        sharpe_ew = ann_excess_ret_ew / ann_vol_ew if ann_vol_ew > 0 else 0.0
+        cum_port_excess_ew = (1 + port_excess_returns_ew).cumprod()
+        max_drawdown_ew = compute_max_drawdown(cum_port_excess_ew)
+
+        # Metrics Benchmark (S&P 500)
+        ann_vol_bench = 0.0
+        ann_excess_ret_bench = 0.0
+        sharpe_bench = 0.0
+        if not bench_excess.empty:
+            ann_vol_bench = bench_excess.std() * np.sqrt(ann_factor)
+            ann_excess_ret_bench = bench_excess.mean() * ann_factor
+            sharpe_bench = ann_excess_ret_bench / ann_vol_bench if ann_vol_bench > 0 else 0.0
 
         return {
             "selected_assets": selected_assets,
-            "weights": current_weights,
+            "weights": current_weights_erc,
             "risk_contrib_pct": rc_pct,
-            "expected_return": ann_excess_ret * 100, 
-            "volatility": ann_vol * 100,             
-            "sharpe": sharpe,
-            "port_returns": port_excess_returns,
-            "cum_port": cum_port_excess,
+            # ERC Results
+            "expected_return": ann_excess_ret_erc * 100, 
+            "volatility": ann_vol_erc * 100,             
+            "sharpe": sharpe_erc,
+            "port_returns": port_excess_returns_erc,
+            "cum_port": cum_port_excess_erc,
+            "max_drawdown": max_drawdown_erc,
+            "total_tc": total_tc_erc * 100,
+            # EW Results
+            "ew_expected_return": ann_excess_ret_ew * 100,
+            "ew_volatility": ann_vol_ew * 100,
+            "ew_sharpe": sharpe_ew,
+            "ew_max_drawdown": max_drawdown_ew,
+            "ew_total_tc": total_tc_ew * 100,
+            "ew_cum_port": cum_port_excess_ew,
+            # Benchmark Results
             "cum_benchmark": cum_benchmark,
-            "total_tc": total_tc * 100,
-            "weights_df": pd.DataFrame(weights_over_time, index=selected_assets).T.sort_index(),
+            "bench_expected_return": ann_excess_ret_bench * 100,
+            "bench_volatility": ann_vol_bench * 100,
+            "bench_sharpe": sharpe_bench,
+            # Common
+            "weights_df": pd.DataFrame(weights_over_time_erc, index=selected_assets).T.sort_index(),
             "rc_df": pd.DataFrame(rc_over_time, index=selected_assets).T.sort_index(),
             "corr_matrix": est_window_clean.corr() if 'est_window_clean' in locals() else pd.DataFrame(),
             "country_exposure_over_time": country_exposure_over_time,
-            "max_drawdown": max_drawdown,
-            # Added for SOTA Monte Carlo
-            "hist_data": est_window_clean if 'est_window_clean' in locals() else pd.DataFrame()
+            "hist_data": full_returns.dropna(how='any') 
         }
     except Exception as e:
         st.error(f"Optimization Error: {e}")
@@ -463,58 +596,41 @@ def perform_optimization(selected_assets, start_date_user, end_date_user, rebala
 def run_monte_carlo(hist_returns_df, weights, years=10, simulations=1000, initial_capital=100000):
     """
     State-of-the-Art Monte Carlo: Multivariate Historical Bootstrap.
-    Instead of assuming a normal distribution (GBM), we sample from REAL historical
-    vectors. This preserves:
-    1. Cross-Asset Correlations (Asset A vs Asset B)
-    2. Fat Tails (Real market crashes)
+    Uses the FULL SAMPLE history provided in hist_returns_df.
     """
     if hist_returns_df.empty:
         return [], [], [], [], []
         
-    # 1. Calculate Portfolio Historical Returns
     port_hist_returns = hist_returns_df.values @ weights
-    
-    n_steps = int(years * 12) # Monthly steps
-    
-    # 2. Bootstrap Engine (Sample from history with replacement)
+    n_steps = int(years * 12) 
     random_indices = np.random.choice(len(port_hist_returns), size=(simulations, n_steps))
-    
-    # 3. Construct Paths
     simulated_returns = port_hist_returns[random_indices]
-    
-    # Growth factors: (1 + r)
     growth_factors = 1 + simulated_returns
-    
-    # Accumulate
     cumulative_growth = np.cumprod(growth_factors, axis=1)
-    
-    # Scale by capital
     price_paths = initial_capital * np.hstack([np.ones((simulations, 1)), cumulative_growth])
     
-    # 4. Statistics
     dates = [datetime.now() + timedelta(days=30*i) for i in range(n_steps + 1)]
     median_path = np.median(price_paths, axis=0)
-    p95 = np.percentile(price_paths, 95, axis=0) # Bull case
-    p05 = np.percentile(price_paths, 5, axis=0)  # Bear case (Tail Risk)
+    p95 = np.percentile(price_paths, 95, axis=0) 
+    p05 = np.percentile(price_paths, 5, axis=0)  
     
     return dates, median_path, p95, p05, price_paths
 
 def plot_monte_carlo(dates, median, p95, p05):
     fig = go.Figure()
     
-    # Fan Chart "Cone of Uncertainty"
     fig.add_trace(go.Scatter(
         x=dates, y=p95, mode='lines', 
         line=dict(width=0), showlegend=False, hoverinfo='skip'
     ))
+    
     fig.add_trace(go.Scatter(
         x=dates, y=p05, mode='lines', 
         line=dict(width=0), fill='tonexty', 
-        fillcolor='rgba(94, 106, 210, 0.2)', 
+        fillcolor='rgba(224, 224, 224, 0.5)', 
         name='95% Confidence Interval'
     ))
     
-    # Median Path
     fig.add_trace(go.Scatter(
         x=dates, y=median, 
         mode='lines', 
@@ -522,27 +638,50 @@ def plot_monte_carlo(dates, median, p95, p05):
         name='Median Projection'
     ))
     
+    # --- MODIFIED LAYOUT SECTION ---
     fig.update_layout(
-        title="10-Year Monte Carlo Projection (Historical Bootstrap)",
+        title="Monte Carlo Projection (Log Scale)",
         paper_bgcolor="white", plot_bgcolor="white",
         font=dict(color="black", family="Times New Roman"),
         yaxis_title="Portfolio Value ($)",
+        # This line enables the Log Scale
+        yaxis=dict(type="log", tickformat=".2s"), 
         height=600,
         template="plotly_white"
     )
+    # -------------------------------
+    
     return fig
 
 # --- CHARTS ---
 def plot_cumulative_performance(results):
-    cum_series = results["cum_port"]
+    cum_erc = results["cum_port"]
+    cum_ew = results.get("ew_cum_port", pd.Series(dtype=float))
     cum_bench = results.get("cum_benchmark", pd.Series(dtype=float))
     
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=cum_series.index, y=cum_series.values, mode="lines", name="Portfolio", line=dict(color="#5e6ad2", width=3)))
-    if not cum_bench.empty:
-        fig.add_trace(go.Scatter(x=cum_bench.index, y=cum_bench.values, mode="lines", name="S&P 500 (Excess)", line=dict(color="#333333", width=2, dash="dash")))
     
-    # Log Scale
+    fig.add_trace(go.Scatter(
+        x=cum_erc.index, y=cum_erc.values, 
+        mode="lines", name="ERC Portfolio", 
+        line=dict(color="#5e6ad2", width=3)
+    ))
+
+    if not cum_ew.empty:
+        fig.add_trace(go.Scatter(
+            x=cum_ew.index, y=cum_ew.values, 
+            mode="lines", name="Equal-Weight (EW)", 
+            line=dict(color="#888888", width=2, dash="dot")
+        ))
+        
+    if not cum_bench.empty:
+        fig.add_trace(go.Scatter(
+            x=cum_bench.index, y=cum_bench.values, 
+            mode="lines", name="S&P 500 (Excess)", 
+            line=dict(color="#333333", width=2, dash="dash")
+        ))
+    
+    cum_series = cum_erc 
     min_val, max_val = cum_series.min(), cum_series.max()
     if min_val > 0 and max_val > 0:
         log_min, log_max = np.log10(min_val), np.log10(max_val)
@@ -556,7 +695,8 @@ def plot_cumulative_performance(results):
     else: nice_dtick = 1
 
     fig.update_layout(
-        title="Cumulative Excess Return (Log Scale)", paper_bgcolor="white", plot_bgcolor="white",
+        title="Cumulative Excess Return (ERC vs EW vs Benchmark)", 
+        paper_bgcolor="white", plot_bgcolor="white",
         font=dict(color="black", family="Times New Roman"), yaxis_title="Growth of $1 (Log)",
         yaxis=dict(type="log", dtick=nice_dtick, tickformat=".2f", minor=dict(showgrid=False)),
         height=650, template="plotly_white"
@@ -608,11 +748,13 @@ def create_pdf_report(results):
     
     pdf.set_font("Helvetica", size=11)
     metrics = [
-        ("Expected Return (Ann.)", f"{results['expected_return']:.2f}%"),
-        ("Volatility (Ann.)", f"{results['volatility']:.2f}%"),
-        ("Sharpe Ratio", f"{results['sharpe']:.2f}"),
-        ("Max Drawdown", f"{results['max_drawdown']:.2f}%"),
-        ("Transaction Costs", f"{results['total_tc']:.2f}%"),
+        ("Average Return (Ann., ERC)", f"{results['expected_return']:.2f}%"),
+        ("Volatility (Ann., ERC)", f"{results['volatility']:.2f}%"),
+        ("Sharpe Ratio (ERC)", f"{results['sharpe']:.2f}"),
+        ("Max Drawdown (ERC)", f"{results['max_drawdown']:.2f}%"),
+        ("Transaction Costs (ERC)", f"{results['total_tc']:.2f}%"),
+        ("Average Return (Ann., EW)", f"{results['ew_expected_return']:.2f}%"),
+        ("Volatility (Ann., EW)", f"{results['ew_volatility']:.2f}%"),
     ]
     
     col_width = pdf.w / 2.5
@@ -670,7 +812,7 @@ with tab0:
           })(document, 'script');
         </script>
         """,
-        height=850, scrolling=False
+        height=600, scrolling=False
     )
 
 with tab1:
@@ -706,13 +848,51 @@ with tab2:
     
     if "results" in st.session_state:
         res = st.session_state.results
-        col1, col2, col3, col4, col5 = st.columns(5)
-        col1.metric("Excess Return", f"{res['expected_return']:.2f}%")
-        col2.metric("Volatility", f"{res['volatility']:.2f}%")
-        col3.metric("Sharpe Ratio", f"{res['sharpe']:.2f}")
-        col4.metric("Max Drawdown", f"{res['max_drawdown']:.2f}%")
-        col5.metric("Trans. Costs", f"{res['total_tc']:.2f}%")
         
+        # --- BUBBLES / METRICS (STYLED AS CARDS) ---
+        # Data for the 5 top cards
+        top_metrics = [
+            {"label": "Excess Return", "value": f"{res['expected_return']:.2f}%", "desc": "Annualized"},
+            {"label": "Volatility", "value": f"{res['volatility']:.2f}%", "desc": "Annualized"},
+            {"label": "Sharpe Ratio", "value": f"{res['sharpe']:.2f}", "desc": "Risk-Adjusted"},
+            {"label": "Max Drawdown", "value": f"{res['max_drawdown']:.2f}%", "desc": "Peak-to-Trough"},
+            {"label": "Trans. Costs", "value": f"{res['total_tc']:.2f}%", "desc": "Total Impact"},
+        ]
+        
+        cols = st.columns(5)
+        for col, metric in zip(cols, top_metrics):
+            with col:
+                st.markdown(
+                    f"""
+                    <div class="metric-card-box">
+                        <div class="metric-card-label">{metric['label']}</div>
+                        <div class="metric-card-value">{metric['value']}</div>
+                        <div class="metric-card-desc">{metric['desc']}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # --- COMPARISONS (EW & BENCHMARK) ---
+        # 1. Equal Weight
+        if "ew_expected_return" in res:
+            with st.expander("Compare with Equal Weight Strategy", expanded=False):
+                 c_ew1, c_ew2, c_ew3 = st.columns(3)
+                 c_ew1.metric("Excess Return (EW)", f"{res['ew_expected_return']:.2f}%", delta=f"{res['ew_expected_return'] - res['expected_return']:.2f}% vs ERC")
+                 c_ew2.metric("Volatility (EW)", f"{res['ew_volatility']:.2f}%", delta=f"{res['ew_volatility'] - res['volatility']:.2f}% vs ERC", delta_color="inverse")
+                 c_ew3.metric("Sharpe (EW)", f"{res['ew_sharpe']:.2f}")
+
+        # 2. Benchmark (S&P 500)
+        if "bench_expected_return" in res and res['bench_volatility'] > 0:
+            with st.expander("Compare with S&P 500 (Benchmark)", expanded=False):
+                 c_b1, c_b2, c_b3 = st.columns(3)
+                 c_b1.metric("Excess Return (SP500)", f"{res['bench_expected_return']:.2f}%", delta=f"{res['bench_expected_return'] - res['expected_return']:.2f}% vs ERC")
+                 c_b2.metric("Volatility (SP500)", f"{res['bench_volatility']:.2f}%", delta=f"{res['bench_volatility'] - res['volatility']:.2f}% vs ERC", delta_color="inverse")
+                 c_b3.metric("Sharpe (SP500)", f"{res['bench_sharpe']:.2f}")
+        
+        # Charts
         st.plotly_chart(plot_cumulative_performance(res), use_container_width=True)
         c1, c2 = st.columns(2)
         c1.subheader("Weights Evolution")
@@ -721,8 +901,78 @@ with tab2:
         c2.plotly_chart(plot_risk_evolution(res), use_container_width=True)
         st.subheader("Country Exposure")
         st.plotly_chart(plot_country_exposure_over_time(res), use_container_width=True)
+
+        # --- INSERTED SNAPSHOT TABLE ---
+        try:
+            last_date = res["weights_df"].index.max()
+            # Extract last row for weights and risk contribution
+            last_w = res["weights_df"].loc[last_date]
+            last_rc = res["rc_df"].loc[last_date]
+            
+            snapshot_df = pd.DataFrame(
+                {
+                    "Weight (%)": last_w * 100,
+                    "Risk Contribution (%)": last_rc,
+                }
+            )
+            
+            st.markdown(f"### Last ERC allocation snapshot on {last_date.date()}")
+            st.dataframe(snapshot_df.style.format("{:.2f}"))
+        except Exception as e:
+            pass
+        # -------------------------------
         
         st.divider()
+        
+        # --- INTERPRETATION (STYLED IDENTICALLY TO TOP BUBBLES) ---
+        st.markdown("### Short interpretation for a client")
+        col_i1, col_i2, col_i3 = st.columns(3)
+        
+        # Using the SAME class 'metric-card-box' so they look identical and handle height the same way
+        with col_i1:
+            st.markdown(
+                f"""
+                <div class="metric-card-box">
+                    <div class="metric-card-label">ERC Portfolio</div>
+                    <div class="metric-card-desc">
+                        Delivers an annualized excess return of <strong>{res['expected_return']:.2f}%</strong> 
+                        for a volatility of <strong>{res['volatility']:.2f}%</strong> 
+                        (Sharpe: {res['sharpe']:.2f}).
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with col_i2:
+            st.markdown(
+                f"""
+                <div class="metric-card-box">
+                    <div class="metric-card-label">Equal-Weight Benchmark</div>
+                    <div class="metric-card-desc">
+                        On the same asset universe, the Equal-Weight portfolio achieves 
+                        <strong>{res['ew_expected_return']:.2f}%</strong> annualized excess return,
+                        with volatility of <strong>{res['ew_volatility']:.2f}%</strong>.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with col_i3:
+            st.markdown(
+                """
+                <div class="metric-card-box">
+                    <div class="metric-card-label">Key Takeaway</div>
+                    <div class="metric-card-desc">
+                        The ERC approach aims to <strong>equalize risk contributions</strong>.
+                        This provides a more <strong>balanced risk allocation</strong> than naive rules, 
+                        reducing concentration in single risk buckets.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        
+        st.markdown("<br>", unsafe_allow_html=True)
 
         if st.button("Generate PDF Report"):
             with st.spinner("Generating PDF... (This uses Kaleido and might take a moment)"):
@@ -743,7 +993,7 @@ with tab2:
 
 with tab3:
     
-    st.write("This simulation projects 10 years into the future using Historical Bootstrap based on your portfolio's assets history.")
+    st.write("This simulation projects into the future using Historical Bootstrap based on your portfolio's assets history.")
     
     if "results" in st.session_state:
         res = st.session_state.results
@@ -753,7 +1003,10 @@ with tab3:
         initial_inv = c1.number_input("Initial Investment ($)", value=100000, step=10000)
         sim_years = c2.slider("Projection Years", 5, 20, 10)
         
-        with st.spinner("Running SOTA Historical Bootstrap Simulation..."):
+        if res["hist_data"].shape[0] < 60:
+             st.warning("Warning: Less than 60 months of data available. Simulation may be less robust.")
+
+        with st.spinner("Running SOTA Historical Bootstrap Simulation (Full Sample)..."):
             # SOTA Monte Carlo Call
             dates, median, p95, p05, paths = run_monte_carlo(
                 hist_returns_df=res['hist_data'],
@@ -763,26 +1016,72 @@ with tab3:
             )
             
             if len(dates) > 0:
-                # Metrics
+                # Metrics Calculation
                 final_median = median[-1]
                 final_95 = p95[-1]
                 final_05 = p05[-1]
                 
+                # Calculate percentages for the description
+                ret_med = ((final_median / initial_inv) - 1) * 100
+                ret_95 = ((final_95 / initial_inv) - 1) * 100
+                ret_05 = ((final_05 / initial_inv) - 1) * 100
+                
+                # --- BUBBLES (STYLED AS CARDS) ---
                 m1, m2, m3 = st.columns(3)
-                m1.metric("Median Ending Value", f"${final_median:,.0f}")
-                m2.metric("Bull Case (95th)", f"${final_95:,.0f}", delta=f"{((final_95/initial_inv)-1)*100:.0f}%")
-                m3.metric("Bear Case (5th)", f"${final_05:,.0f}", delta=f"{((final_05/initial_inv)-1)*100:.0f}%")
+                
+                with m1:
+                    st.markdown(
+                        f"""
+                        <div class="metric-card-box">
+                            <div class="metric-card-label">Median Ending Value</div>
+                            <div class="metric-card-value">${final_median:,.0f}</div>
+                            <div class="metric-card-desc">Total Return: {ret_med:,.0f}%</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                
+                with m2:
+                    st.markdown(
+                        f"""
+                        <div class="metric-card-box">
+                            <div class="metric-card-label">Bull Case (95th)</div>
+                            <div class="metric-card-value">${final_95:,.0f}</div>
+                            <div class="metric-card-desc">Total Return: {ret_95:,.0f}%</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                
+                with m3:
+                    st.markdown(
+                        f"""
+                        <div class="metric-card-box">
+                            <div class="metric-card-label">Bear Case (5th)</div>
+                            <div class="metric-card-value">${final_05:,.0f}</div>
+                            <div class="metric-card-desc">Total Return: {ret_05:,.0f}%</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                
+                st.markdown("<br>", unsafe_allow_html=True)
                 
                 # Chart
                 st.plotly_chart(plot_monte_carlo(dates, median, p95, p05), use_container_width=True)
                 
                 # Interpretation
-                st.info(f"""
-                **Methodology: Historical Bootstrap**
-                Unlike basic simulations that assume markets are 'Normal', this simulation samples from **actual historical events** in your assets' history. This accurately captures:
-                1. **Fat Tails:** Real market crashes and booms.
-                2. **Correlation Spikes:** How your assets move together during crises.
-                """)
+                st.markdown(f"""
+                <div class="custom-info-box">
+                    <strong>Methodology: Historical Bootstrap</strong><br>
+                    Unlike basic simulations that assume markets are 'Normal', this simulation samples from <strong>actual historical events</strong> in your assets' history (using the entire available sample). This accurately captures:
+                    <ul>
+                        <li><strong>Fat Tails:</strong> Real market crashes and booms.</li>
+                        <li><strong>Correlation Spikes:</strong> How your assets move together during crises.</li>
+                    </ul>
+                </div>
+                """, unsafe_allow_html=True)
+
             else:
                 st.error("Insufficient historical data to run bootstrap simulation.")
             
@@ -796,7 +1095,7 @@ with tab4:
 
     We are a dedicated team of financial experts and developers passionate about helping individuals and institutions optimize their pension funds for maximum efficiency and risk management.
 
-    Our tool uses advanced optimization techniques, specifically Dynamic Equal Risk Contribution (ERC) with annual rebalancing, to create balanced portfolios that aim to equalize the risk contributions from each asset over time.
+    Our tool uses advanced optimization techniques, specifically Dynamic Equal Risk Contribution (ERC) with different rebalancing frequencies, to create balanced portfolios that aim to equalize the risk contributions from each asset over time.
 
     Built with Streamlit and powered by open-source libraries, this app provides an intuitive interface for selecting assets, analyzing historical data, and visualizing results.
 
@@ -813,7 +1112,7 @@ with tab4:
         {
             "name": "Lucas Jaccard",
             "role": "Frontend Developer",
-            "desc": "Lucas designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
+            "desc": "Lucas specializes in financial data analytics and portfolio optimization models, contributing quantitative insight to the ERC framework.",
             "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Lucas_JACCARD.JPG"
         },
         {
@@ -831,7 +1130,7 @@ with tab4:
         {
             "name": "Rihem Rhaiem",
             "role": "Data Scientist",
-            "desc": "Rihem specializes in financial data analytics and portfolio optimization models, contributing quantitative insight to the ERC framework.",
+            "desc": "Rihem designs the app’s visual experience, combining clarity, interactivity, and elegance to make financial analysis more accessible.",
             "photo": "https://raw.githubusercontent.com/quantquant-max/QARM-II-Pension-Fund-ERC/main/team_photos/Rihem_RHAIEM.JPG"
         },
         {
@@ -845,7 +1144,17 @@ with tab4:
     cols = st.columns(len(team))
     for i, member in enumerate(team):
         with cols[i]:
-            st.image(member["photo"], width=150)
-            st.markdown(f"### {member['name']}")
-            st.markdown(f"**{member['role']}**")
-            st.write(member["desc"])
+            # Use the same .metric-card-box class for the bubble style
+            st.markdown(
+                f"""
+                <div class="metric-card-box" style="text-align: center; padding: 1.5rem;">
+                    <img src="{member['photo']}" style="display: block; margin: 0 auto 1rem auto; width: 130px; height: 130px; border-radius: 50%; object-fit: cover; border: 4px solid {BUTTON_COLOR};">
+                    <div class="metric-card-value" style="font-size: 1.3rem; margin-bottom: 0.3rem;">{member['name']}</div>
+                    <div class="metric-card-label" style="font-size: 0.95rem; margin-bottom: 0.8rem; color: #666;">{member['role']}</div>
+                    <div class="metric-card-desc" style="font-size: 0.9rem; line-height: 1.5;">
+                        {member['desc']}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
